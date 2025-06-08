@@ -1,0 +1,19 @@
+{
+    "name": "fullstack-travv",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "install-all": "npm install --prefix ./client/admin && npm install --prefix ./client/operator && npm install --prefix ./client/user && npm install --prefix server",
+        "build": "npm run build --prefix ./client/admin && npm run build --prefix ./client/operator && npm run build --prefix ./client/user",
+        "dev": "concurrently \"npm run client-admin-dev\" \"npm run client-operator-dev\" \"npm run client-user-dev\" \"npm run server-dev\"",
+        "start": "npm run server",
+        "client-admin-dev": "npm run dev --prefix ./client/admin",
+        "client-operator-dev": "npm run dev --prefix ./client/operator",
+        "client-user-dev": "npm run dev --prefix ./client/user",
+        "server-dev": "nodemon index.js --prefix server",
+        "server": "node index.js --prefix server"
+    },
+    "devDependencies": {
+        "concurrently": "^9.1.2"
+    }
+}
