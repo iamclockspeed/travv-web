@@ -2,6 +2,7 @@ import { Admin, Resource } from "react-admin";
 import authProvider from "./providers/authProvider";
 import dataProvider from "./providers/dataProvider";
 import { Card, CardContent, Typography, Grid } from "@mui/material";
+import CustomLoginPage from "./screens/login";
 
 const WelcomePage = () => {
   return (
@@ -43,6 +44,7 @@ const App = () => (
     authProvider={authProvider}
     dataProvider={dataProvider}
     dashboard={WelcomePage}
+    loginPage={CustomLoginPage}
   >
     <Resource name="posts" />
   </Admin>
