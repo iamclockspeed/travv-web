@@ -1,52 +1,27 @@
-import { Admin, Resource } from "react-admin";
+import { Admin, CustomRoutes } from "react-admin";
+import { Route } from "react-router-dom";
 import authProvider from "./providers/authProvider";
 import dataProvider from "./providers/dataProvider";
-import { Card, CardContent, Typography, Grid } from "@mui/material";
 import CustomLoginPage from "./screens/login";
-
-const WelcomePage = () => {
-  return (
-    <div style={{ padding: 5 }}>
-      <Grid container spacing={2}>
-        <Grid>
-          <Card>
-            <CardContent>
-              <Typography variant="h5">Users</Typography>
-              <Typography variant="body2">Manage your users here.</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid>
-          <Card>
-            <CardContent>
-              <Typography variant="h5">Posts</Typography>
-              <Typography variant="body2">View and edit posts.</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid>
-          <Card>
-            <CardContent>
-              <Typography variant="h5">Reports</Typography>
-              <Typography variant="body2">Check system reports.</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </div>
-  );
-};
+import Dashboard from "./screens/dashboard";
+import LiveTracking from "./screens/live-tracking";
+import Reports from "./screens/reports";
+import Settings from "./screens/settings";
+import CustomLayout from "./components/layout";
 
 const App = () => (
   <Admin
     authProvider={authProvider}
     dataProvider={dataProvider}
-    dashboard={WelcomePage}
     loginPage={CustomLoginPage}
+    dashboard={Dashboard}
+    layout={CustomLayout}
   >
-    <Resource name="posts" />
+    <CustomRoutes>
+      <Route path="/live-tracking" element={<LiveTracking />} />
+      <Route path="/reports" element={<Reports />} />
+      <Route path="/settings" element={<Settings />} />
+    </CustomRoutes>
   </Admin>
 );
 

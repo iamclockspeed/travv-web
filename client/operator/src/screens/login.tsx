@@ -1,7 +1,7 @@
 import { useLogin, useNotify } from "react-admin";
 import { useState } from "react";
 import { Box, Typography, TextField, Button, Link } from "@mui/material";
-import logoImage from "../assets/logo.png";
+import LogoImage from "../assets/logo.png";
 
 const CustomLoginPage = () => {
   const login = useLogin();
@@ -49,7 +49,7 @@ const CustomLoginPage = () => {
             mb: 18,
           }}
         >
-          <img src={logoImage} alt="Travv Logo" style={{ width: 50 }} />
+          <img src={LogoImage} alt="Travv Logo" style={{ width: 50 }} />
           <Typography variant="h4" color="black">
             Travv Services Ltd.
           </Typography>
