@@ -18,3 +18,20 @@ exports.operatorLogin = (req, res) => {
     user: user,
   });
 };
+
+exports.vehicles = (req, res) => {
+  const vehicles = [];
+
+  for (let index = 0; index < 10; index++) {
+    const vehicle = {
+      id: index,
+      name: "Jitendra",
+      lat: Math.random() * 5,
+      lng: Math.random() * 5,
+    };
+    vehicles.push(vehicle);
+  }
+  res.set("Access-Control-Expose-Headers", "Content-Range");
+  res.set("Content-Range", `items 0-9/10`);
+  res.status(200).json(vehicles);
+};

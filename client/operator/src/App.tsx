@@ -8,6 +8,7 @@ import LiveTracking from "./screens/live-tracking";
 import Reports from "./screens/reports";
 import Settings from "./screens/settings";
 import CustomLayout from "./components/layout";
+import "leaflet/dist/leaflet.css";
 
 const App = () => (
   <Admin
