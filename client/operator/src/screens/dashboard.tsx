@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, Box, Typography, Grid } from "@mui/material";
 import { DashCard } from "../components/custom-uis";
 import TimeToLeaveIcon from "@mui/icons-material/TimeToLeave";
@@ -16,6 +17,8 @@ import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+
   return (
     <Card>
       <CardContent>
@@ -30,8 +33,9 @@ const Dashboard = () => {
             <Grid container spacing={2} mt={1}>
               <DashCard
                 v1={251}
-                v2="Total Vahicles"
+                v2="Total Vehicles"
                 icon={<TimeToLeaveIcon fontSize="large" />}
+                onClick={() => navigate("/total-vehicles")}
               ></DashCard>
 
               <DashCard
@@ -102,6 +106,7 @@ const Dashboard = () => {
                 v1={251}
                 v2="Low Fuel Vehicles"
                 icon={<LocalGasStationIcon fontSize="large" />}
+                onClick={() => navigate("/low-fuel-vehicles")}
               ></DashCard>
             </Grid>
           </Box>

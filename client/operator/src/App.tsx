@@ -5,8 +5,8 @@ import dataProvider from "./providers/dataProvider";
 import CustomLoginPage from "./screens/login";
 import Dashboard from "./screens/dashboard";
 import LiveTracking from "./screens/live-tracking";
-import Reports from "./screens/reports";
-import Settings from "./screens/settings";
+import TotalVehicles from "./screens/features/total-vehicles";
+import LowFuelVehicles from "./screens/features/low-fuel-vehicles";
 import CustomLayout from "./components/layout";
 import "leaflet/dist/leaflet.css";
 
@@ -20,8 +20,8 @@ const App = () => (
   >
     <CustomRoutes>
       <Route path="/live-tracking" element={<LiveTracking />} />
-      <Route path="/reports" element={<Reports />} />
-      <Route path="/settings" element={<Settings />} />
+      <Route path="/total-vehicles" element={<TotalVehicles />} />
+      <Route path="/low-fuel-vehicles" element={<LowFuelVehicles />} />
     </CustomRoutes>
   </Admin>
 );

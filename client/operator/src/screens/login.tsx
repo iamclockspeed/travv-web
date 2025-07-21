@@ -51,7 +51,7 @@ const CustomLoginPage = () => {
         >
           <img src={LogoImage} alt="Travv Logo" style={{ width: 50 }} />
           <Typography variant="h4" color="black">
-            Travv Services Ltd.
+            Travv
           </Typography>
         </Box>
         <Typography variant="h4" sx={{ mt: 2, mb: 2 }}>
@@ -87,7 +87,7 @@ const CustomLoginPage = () => {
             size="large"
             fullWidth
             variant="contained"
-            sx={{ mt: 2, mb: 2 }}
+            sx={{ mt: 2, mb: 2, backgroundColor: "#44307C" }}
           >
             Sign In
           </Button>
