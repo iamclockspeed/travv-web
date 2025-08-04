@@ -39,32 +39,56 @@ exports.vehicles = (req, res) => {
 exports.totalVehicles = (req, res) => {
   const range = JSON.parse(req.query.range);
 
-  console.log(range);
-
   const vehicles = [];
 
   const vehiclesActivity = ["active", "idle", "offline"];
-  const vehiclesAlerts = [
-    "overspeeding",
-    "low battery",
-    "geo fence violation",
-    "crash detected",
-  ];
 
   for (let index = range[0]; index < range[1] + 1; index++) {
-    const cuAlerts = [];
-
-    for (let j = 0; j < getRandomInt(0, 3); j++) {
-      cuAlerts.push(vehiclesAlerts[getRandomInt(0, vehiclesAlerts.length - 1)]);
-    }
     const vehicle = {
-      id: index + 1,
-      name: "Jitendra",
+      id: index,
       vehicleNumber: "OD 15 N " + Math.floor(1000 + Math.random() * 9000),
-      vehicleClass: "Mahindra 225",
+      type: "Bus",
+      make: "Mahindra",
+      model: "225",
       status: vehiclesActivity[getRandomInt(0, vehiclesActivity.length - 1)],
-      alerts: cuAlerts,
-      location: `${Math.random() * 5}, ${Math.random() * 5}`,
+      fuelType: "ev",
+      location: `${(Math.random() * 8).toFixed(12)}, ${(
+        Math.random() * 8
+      ).toFixed(12)}`,
+      alertHistory: [
+        {
+          type: "over speeding",
+          time: "2025-08-03T08:45:00Z",
+          location: "1.997776516629, 5.468399803731",
+          unhandled: true,
+        },
+        {
+          type: "low fuel",
+          time: "2025-08-01T13:22:00Z",
+          location: "1.997776516629, 5.468399803731",
+          unhandled: true,
+        },
+        {
+          type: "geo fence violation",
+          time: "2025-08-01T13:22:00Z",
+          location: "1.997776516629, 5.468399803731",
+          unhandled: true,
+        },
+        {
+          type: "unplug & towing",
+          time: "2025-08-01T13:22:00Z",
+          location: "1.997776516629, 5.468399803731",
+          unhandled: false,
+        },
+      ],
+      mainImage:
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThezfLUBEdwWoPGkwXksYE3rWZXOUTjfYNng&s",
+      images: [
+        "https://www.dashbus.com/wp-content/uploads/Transit-Bus-Exterior.png",
+        "https://image.made-in-china.com/202f0j00fDrqOsaGuPgt/24-40-Passengers-Car-Enterprise-Commuter-Bus-Passenger-Bus-Tourist-Bus-Passenger-Car.webp",
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-yldSwtbqpHFDRcrBGJ1Uim7HkF6GagrQ3Ne8Uh75SlyOk-0mwy8tsb-YlvJl1YW_SuI&usqp=CAU",
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqkQVjXRiVSiI_s3CcfWVZROVhs0SeIax1oGU1gOSxYM5F_lnbCoMju_EtLdNDRB9EKGw&usqp=CAU",
+      ],
     };
     vehicles.push(vehicle);
   }

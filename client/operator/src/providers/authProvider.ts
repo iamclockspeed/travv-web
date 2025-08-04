@@ -37,7 +37,6 @@ const authProvider: AuthProvider = {
   },
 
   getPermissions: () => {
-    // Example: you can decode token here and return permissions
     return Promise.resolve();
   },
 };

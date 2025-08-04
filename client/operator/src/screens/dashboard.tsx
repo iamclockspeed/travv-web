@@ -9,7 +9,6 @@ import SpeedIcon from "@mui/icons-material/Speed";
 import WrongLocationIcon from "@mui/icons-material/WrongLocation";
 import CarCrashIcon from "@mui/icons-material/CarCrash";
 import HourglassTopIcon from "@mui/icons-material/HourglassTop";
-import ModeOfTravelIcon from "@mui/icons-material/ModeOfTravel";
 import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 import HandymanIcon from "@mui/icons-material/Handyman";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -42,18 +41,21 @@ const Dashboard = () => {
                 v1={251}
                 v2="Active Vahicles"
                 icon={<PlayCircleIcon fontSize="large" />}
+                onClick={() => navigate("/active-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Idle Vahicles"
                 icon={<AccessTimeFilledIcon fontSize="large" />}
+                onClick={() => navigate("/idle-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Offline Vahicles"
                 icon={<WifiOffIcon fontSize="large" />}
+                onClick={() => navigate("/offline-vehicles")}
               ></DashCard>
             </Grid>
           </Box>
@@ -67,18 +69,21 @@ const Dashboard = () => {
                 v1={23}
                 v2="Over-Speeding Vehicles"
                 icon={<SpeedIcon fontSize="large" />}
+                onClick={() => navigate("/over-speeding-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Geo-Fence Violations"
                 icon={<WrongLocationIcon fontSize="large" />}
+                onClick={() => navigate("/geo-fence-violating-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Crash Detections"
                 icon={<CarCrashIcon fontSize="large" />}
+                onClick={() => navigate("/crash-detected-vehicles")}
               ></DashCard>
             </Grid>
           </Box>
@@ -94,12 +99,7 @@ const Dashboard = () => {
                 v1={251}
                 v2="Excessive Idling Alerts "
                 icon={<HourglassTopIcon fontSize="large" />}
-              ></DashCard>
-
-              <DashCard
-                v1={251 + " km"}
-                v2="Total Trip Calculation"
-                icon={<ModeOfTravelIcon fontSize="large" />}
+                onClick={() => navigate("/excessive-idle-vehicles")}
               ></DashCard>
 
               <DashCard
@@ -122,24 +122,28 @@ const Dashboard = () => {
                 v1={251}
                 v2="Engine Breakdown Alerts"
                 icon={<HandymanIcon fontSize="large" />}
+                onClick={() => navigate("/engine-breakdown-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Unplug & Towing Alerts"
                 icon={<LocalShippingIcon fontSize="large" />}
+                onClick={() => navigate("/unplug-and-towing-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Low Battery Alerts"
                 icon={<BatteryCharging20Icon fontSize="large" />}
+                onClick={() => navigate("/low-battery-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={251}
                 v2="Upcoming Maintenance"
                 icon={<SettingsSuggestIcon fontSize="large" />}
+                onClick={() => navigate("/upcomming-maintenance-vehicles")}
               ></DashCard>
             </Grid>
           </Box>

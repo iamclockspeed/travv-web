@@ -1,6 +1,12 @@
 import { type FC } from "react";
 import { useLocation } from "react-router-dom";
-import { AppBar, UserMenu, MenuItemLink, Logout } from "react-admin";
+import {
+  AppBar,
+  UserMenu,
+  MenuItemLink,
+  Logout,
+  LoadingIndicator,
+} from "react-admin";
 import { Typography, Box } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import HelpIcon from "@mui/icons-material/Help";
@@ -65,6 +71,7 @@ const CustomAppBar: FC = (props) => {
           </Typography>
         </Box>
       </Box>
+      <LoadingIndicator />
     </AppBar>
   );
 };
