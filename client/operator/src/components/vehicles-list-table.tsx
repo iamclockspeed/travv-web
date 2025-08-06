@@ -22,6 +22,7 @@ import {
   Typography,
   IconButton,
   Button,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import MapIcon from "@mui/icons-material/Map";
@@ -41,6 +42,10 @@ interface Vehicle {
   fuelType: string;
   location: string;
   alertHistory: VehicleAlert[];
+  fuelLogs: FuelLog[];
+  trips: Trip[];
+  maintenanceLogs: MaintenanceLog[];
+  documents: VehicleDocuments;
   mainImage: string;
   images: string[];
 }
@@ -52,10 +57,50 @@ interface VehicleAlert {
   unhandled: boolean;
 }
 
+interface FuelLog {
+  date: string;
+  location: string;
+  amount: number;
+  cost: number;
+}
+
+interface Trip {
+  from: string;
+  to: string;
+  distance: number;
+  duration: number;
+  date: string;
+}
+
+interface MaintenanceLog {
+  date: string;
+  description: string;
+}
+
+interface VehicleDocuments {
+  rcNumber: string;
+  rcExpiry: string;
+  fitnessExpiry: string;
+  puccExpiry: string;
+  insuranceExpiry: string;
+  rcDocUrl?: string;
+  insuranceDocUrl?: string;
+  fitnessDocUrl?: string;
+  puccDocUrl?: string;
+  invoiceDocUrl?: string;
+}
+
 interface VehicleDetailsModalProps {
   open: boolean;
   onClose: () => void;
   vehicle: Vehicle | null;
+  onAlertUpdate?: (vehicleId: number, updatedAlerts: VehicleAlert[]) => void;
+}
+
+interface TabPanelProps {
+  children: React.ReactNode;
+  value: number;
+  index: number;
 }
 
 // --------------------------------------------
@@ -83,10 +128,10 @@ const VehicleFilters = () => {
       <FilterForm
         filters={[
           <TextInput
-            label="Vehicle Number / Class"
-            source="vehicleNumber"
+            label="Vehicle Number / Model"
+            source="v"
             alwaysOn
-            key="vehicleNumber"
+            key="v"
           />,
         ]}
         {...filterContext}
@@ -98,7 +143,7 @@ const VehicleFilters = () => {
 // --------------------------------------------
 // ✅ Modal Component
 // --------------------------------------------
-const TabPanel = ({ children, value, index }: any) => {
+const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => {
   return (
     <div hidden={value !== index}>
       {value === index && <Box sx={{ mt: 2 }}>{children}</Box>}
@@ -110,11 +155,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   open,
   onClose,
   vehicle,
+  onAlertUpdate,
 }) => {
   if (!vehicle) return null;
 
   const [tabIndex, setTabIndex] = useState(0);
-  const [alertHistory, setAlertHistory] = useState(vehicle?.alertHistory || []);
+  const [alertHistory, setAlertHistory] = useState(vehicle.alertHistory);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -158,19 +204,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             </Typography>
             <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               Location:
-              <IconButton
-                size="large"
-                onClick={() =>
-                  window.open(
-                    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      vehicle.location
-                    )}`,
-                    "_blank"
-                  )
-                }
-                title="View on Map"
-                sx={{ p: 0.5 }}
-              >
+              <IconButton size="large" title="View on Map" sx={{ p: 0.5 }}>
                 <MapIcon fontSize="medium" />
               </IconButton>
               {vehicle.location}
@@ -192,7 +226,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                     <Box key={i}>
                       <img
                         src={src}
-                        alt={`Gallery ${i + 1}`}
+                        alt={`Vehicle image ${i + 1}`}
                         style={{
                           width: "100%",
                           height: 300,
@@ -209,20 +243,187 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
         {/* Trips */}
         <TabPanel value={tabIndex} index={1}>
-          <Typography>Trips for vehicle #{vehicle.vehicleNumber}</Typography>
-          <ul>
-            <li>Trip #1: Origin → Destination (Date)</li>
-            <li>Trip #2: Origin → Destination (Date)</li>
-          </ul>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            🚗 Trip Summary (Last 30 Days)
+          </Typography>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              Total Trips: {vehicle.trips.length}
+            </Typography>
+            <Typography variant="body2">
+              Total Distance:{" "}
+              {vehicle.trips.reduce((acc, t) => acc + t.distance, 0).toFixed(1)}{" "}
+              km
+            </Typography>
+            <Typography variant="body2">
+              Total Duration:{" "}
+              {(
+                vehicle.trips.reduce((acc, t) => acc + t.duration, 0) / 60
+              ).toFixed(1)}{" "}
+              mins
+            </Typography>
+            <Typography variant="body2">
+              Avg. Mileage:{" "}
+              {(
+                vehicle.trips.reduce((acc, t) => acc + t.distance, 0) /
+                (vehicle.fuelLogs.reduce((acc, f) => acc + f.amount, 0) || 1)
+              ).toFixed(1)}{" "}
+              km/L
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              ⏳ Only trips from the last 30 days are shown
+            </Typography>
+          </Box>
+
+          {vehicle.trips.length > 0 ? (
+            <Box
+              sx={{
+                maxHeight: 300,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+                pr: 1,
+              }}
+            >
+              {vehicle.trips.map((trip, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    backgroundColor: "#f4f4f4",
+                    borderLeft: `4px solid #27ae60`,
+                    p: 1.5,
+                    borderRadius: 1,
+                    boxShadow: 1,
+                  }}
+                >
+                  <Box sx={{ fontSize: 24 }}>🧭</Box>
+                  <Box flex={1}>
+                    <Typography sx={{ fontWeight: 500 }}>
+                      {trip.from} ➝ {trip.to}
+                    </Typography>
+                    <Typography variant="body2">
+                      {trip.distance} km | {(trip.duration / 60).toFixed(1)}{" "}
+                      mins
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      📅 {new Date(trip.date).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                backgroundColor: "#2ecc71",
+                color: "#fff",
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                width: "fit-content",
+                mt: 1,
+              }}
+            >
+              ✅ No Trips Recorded
+            </Box>
+          )}
         </TabPanel>
 
         {/* Fuel Logs */}
         <TabPanel value={tabIndex} index={2}>
-          <Typography>Fuel Logs</Typography>
-          <ul>
-            <li>2024-06-12: ⛽ 40L filled - ₹3200</li>
-            <li>2024-06-20: ⛽ 35L filled - ₹2900</li>
-          </ul>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            ⛽ Fuel Logs Summary (Last 30 Days)
+          </Typography>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              Total Fills: {vehicle.fuelLogs.length}
+            </Typography>
+            <Typography variant="body2">
+              Total Fuel:{" "}
+              {vehicle.fuelLogs.reduce((acc, f) => acc + f.amount, 0)} L
+            </Typography>
+            <Typography variant="body2">
+              Total Cost: ₹
+              {vehicle.fuelLogs.reduce((acc, f) => acc + f.cost, 0)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              ⏳ Only logs from the last 30 days are shown
+            </Typography>
+          </Box>
+
+          {vehicle.fuelLogs.length > 0 ? (
+            <Box
+              sx={{
+                maxHeight: 300,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+                pr: 1,
+              }}
+            >
+              {vehicle.fuelLogs.map((log, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    backgroundColor: "#f4f4f4",
+                    borderLeft: `4px solid #2980b9`,
+                    p: 1.5,
+                    borderRadius: 1,
+                    boxShadow: 1,
+                  }}
+                >
+                  <Box sx={{ fontSize: 24 }}>⛽</Box>
+                  <Box flex={1}>
+                    <Typography sx={{ fontWeight: 500 }}>
+                      Filled {log.amount} L – ₹{log.cost}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      📅 {new Date(log.date).toLocaleString()}
+                    </Typography>
+                    {log.location && (
+                      <Typography
+                        variant="body2"
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
+                        <IconButton
+                          size="small"
+                          title="View on Map"
+                          sx={{ p: 0.2 }}
+                        >
+                          <MapIcon fontSize="small" />
+                        </IconButton>
+                        Location
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                backgroundColor: "#2ecc71",
+                color: "#fff",
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                width: "fit-content",
+                mt: 1,
+              }}
+            >
+              ✅ No Fuel Logs
+            </Box>
+          )}
         </TabPanel>
 
         {/* Alert History */}
@@ -230,13 +431,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             🚨 Alert Summary (Last 30 Days)
           </Typography>
-
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              Total Alerts: {alertHistory.length}
+              Unhandled Alerts: {alertHistory.filter((a) => a.unhandled).length}
             </Typography>
             <Typography variant="body2">
-              Unhandled Alerts: {alertHistory.filter((a) => a.unhandled).length}
+              Total Alerts: {alertHistory.length}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               ⏳ Only alerts from the last 30 days are shown
@@ -253,8 +453,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   a.unhandled ? { ...a, unhandled: false } : a
                 );
                 setAlertHistory(updated);
-
-                // Optional API
+                onAlertUpdate?.(vehicle.id, updated);
                 // await api.markAllAlertsHandled(vehicle.id);
               }}
               sx={{ mb: 2, alignSelf: "flex-start" }}
@@ -285,8 +484,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   const updated = [...alertHistory];
                   updated[i] = { ...alert, unhandled: false };
                   setAlertHistory(updated);
-
-                  // Optional: call API here
+                  onAlertUpdate?.(vehicle.id, updated);
                   // await api.markAlertHandled(alert.id);
                 };
 
@@ -328,20 +526,12 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                         >
                           <IconButton
                             size="small"
-                            onClick={() =>
-                              window.open(
-                                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                  location
-                                )}`,
-                                "_blank"
-                              )
-                            }
                             title="View on Map"
                             sx={{ p: 0.2 }}
                           >
                             <MapIcon fontSize="small" />
                           </IconButton>
-                          View on Map
+                          Location
                         </Typography>
                       )}
 
@@ -379,32 +569,209 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
         {/* Maintenance Logs */}
         <TabPanel value={tabIndex} index={4}>
-          <Typography>Maintenance Logs</Typography>
-          <ul>
-            <li>2024-05-30: Oil Change</li>
-            <li>2024-06-15: Tyre Replacement</li>
-          </ul>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            🛠️ Maintenance Summary (Last 30 Days)
+          </Typography>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              Total Maintenance Entries: {vehicle.maintenanceLogs?.length ?? 0}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              ⏳ Only logs from the last 30 days are shown
+            </Typography>
+          </Box>
+
+          {vehicle.maintenanceLogs?.length > 0 ? (
+            <Box
+              sx={{
+                maxHeight: 300,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+                pr: 1,
+              }}
+            >
+              {vehicle.maintenanceLogs.map((log, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 2,
+                    backgroundColor: "#f4f4f4",
+                    borderLeft: `4px solid #8e44ad`,
+                    p: 1.5,
+                    borderRadius: 1,
+                    boxShadow: 1,
+                  }}
+                >
+                  <Box sx={{ fontSize: 24 }}>🛠️</Box>
+                  <Box flex={1}>
+                    <Typography sx={{ fontWeight: 500 }}>
+                      {log.description}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      📅 {new Date(log.date).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                backgroundColor: "#2ecc71",
+                color: "#fff",
+                px: 2,
+                py: 1,
+                borderRadius: 1,
+                width: "fit-content",
+                mt: 1,
+              }}
+            >
+              ✅ No Maintenance Logs
+            </Box>
+          )}
         </TabPanel>
 
         {/* Documents */}
         <TabPanel value={tabIndex} index={5}>
-          <Typography>Documents</Typography>
-          <ul>
-            <li>
-              <a href="/docs/rc.pdf" target="_blank" rel="noopener noreferrer">
-                Registration Certificate
-              </a>
-            </li>
-            <li>
-              <a
-                href="/docs/insurance.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Insurance
-              </a>
-            </li>
-          </ul>
+          <Typography variant="subtitle1" sx={{ mb: 1 }}>
+            📄 Vehicle Documents
+          </Typography>
+
+          <Box display="flex" flexDirection="column" gap={1.5}>
+            {/* RC */}
+            <Box
+              sx={{
+                backgroundColor: "#f4f4f4",
+                borderLeft: `4px solid #2980b9`,
+                p: 1.5,
+                borderRadius: 1,
+                boxShadow: 1,
+              }}
+            >
+              <Typography sx={{ fontWeight: 500 }}>
+                RC Number: {vehicle.documents.rcNumber}
+              </Typography>
+              <Typography variant="body2">
+                Expiry Date:{" "}
+                {new Date(vehicle.documents.rcExpiry).toLocaleDateString()}
+              </Typography>
+            </Box>
+
+            {/* Fitness */}
+            <Box
+              sx={{
+                backgroundColor: "#f4f4f4",
+                borderLeft: `4px solid #8e44ad`,
+                p: 1.5,
+                borderRadius: 1,
+                boxShadow: 1,
+              }}
+            >
+              <Typography sx={{ fontWeight: 500 }}>
+                Fitness Certificate
+              </Typography>
+              <Typography variant="body2">
+                Expiry Date:{" "}
+                {new Date(vehicle.documents.fitnessExpiry).toLocaleDateString()}
+              </Typography>
+            </Box>
+
+            {/* PUCC */}
+            <Box
+              sx={{
+                backgroundColor: "#f4f4f4",
+                borderLeft: `4px solid #16a085`,
+                p: 1.5,
+                borderRadius: 1,
+                boxShadow: 1,
+              }}
+            >
+              <Typography sx={{ fontWeight: 500 }}>PUCC</Typography>
+              <Typography variant="body2">
+                Expiry Date:{" "}
+                {new Date(vehicle.documents.puccExpiry).toLocaleDateString()}
+              </Typography>
+            </Box>
+
+            {/* Insurance */}
+            <Box
+              sx={{
+                backgroundColor: "#f4f4f4",
+                borderLeft: `4px solid #d35400`,
+                p: 1.5,
+                borderRadius: 1,
+                boxShadow: 1,
+              }}
+            >
+              <Typography sx={{ fontWeight: 500 }}>Insurance</Typography>
+              <Typography variant="body2">
+                Expiry Date:{" "}
+                {new Date(
+                  vehicle.documents.insuranceExpiry
+                ).toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* 🔗 Optional Links (With Placeholder) */}
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              📎 Available Document Files
+            </Typography>
+
+            <Box display="flex" flexDirection="column" gap={1}>
+              {[
+                {
+                  name: "Registration Certificate",
+                  url: vehicle.documents.rcDocUrl,
+                },
+                { name: "Insurance", url: vehicle.documents.insuranceDocUrl },
+                {
+                  name: "Fitness Certificate",
+                  url: vehicle.documents.fitnessDocUrl,
+                },
+                { name: "PUCC", url: vehicle.documents.puccDocUrl },
+                {
+                  name: "Vehicle Invoice",
+                  url: vehicle.documents.invoiceDocUrl,
+                },
+              ].map((doc, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    backgroundColor: "#f4f4f4",
+                    p: 1,
+                    borderRadius: 1,
+                    boxShadow: 1,
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 500 }}>{doc.name}:</Typography>
+                  {doc.url ? (
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "#2980b9", textDecoration: "underline" }}
+                    >
+                      View Document
+                    </a>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No File Uploaded
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+            </Box>
+          </Box>
         </TabPanel>
       </DialogContent>
     </Dialog>
@@ -530,8 +897,24 @@ const VehicleTable: React.FC = () => {
     setOpen(true);
   };
 
-  if (isLoading) return <p>Loading...</p>;
-  if (!data) return <p>No data</p>;
+  const handleAlertUpdate = (
+    vehicleId: number,
+    updatedAlerts: VehicleAlert[]
+  ) => {
+    if (selectedVehicle?.id === vehicleId) {
+      setSelectedVehicle({ ...selectedVehicle, alertHistory: updatedAlerts });
+    }
+  };
+
+  if (isLoading)
+    return (
+      <Box display="flex" gap={1} justifyContent="left" alignItems="center">
+        <Typography variant="subtitle1">Loading</Typography>
+        <CircularProgress size={20} />
+      </Box>
+    );
+
+  if (!data) return <p>No data available</p>;
 
   return (
     <>
@@ -573,16 +956,20 @@ const VehicleTable: React.FC = () => {
           label="Make / Model"
           render={(record) => `${record.make} ${record.model}`}
         />
-        <FunctionField label="Status" render={() => <StatusWithIcon />} />
+        <FunctionField
+          label="Status"
+          render={(record) => <StatusWithIcon status={record.status} />}
+        />
         <FunctionField label="Alerts" render={() => <AlertsWithBadges />} />
         <FunctionField label="Location" render={() => <LocationWithLink />} />
       </Datagrid>
       <Pagination />
       <VehicleDetailsModal
+        key={selectedVehicle?.id}
         open={open}
         onClose={() => setOpen(false)}
-        key={selectedVehicle?.id}
         vehicle={selectedVehicle}
+        onAlertUpdate={handleAlertUpdate}
       />
     </>
   );

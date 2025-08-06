@@ -81,6 +81,64 @@ exports.totalVehicles = (req, res) => {
           unhandled: false,
         },
       ],
+      fuelLogs: [
+        {
+          date: "2025-08-03T08:45:00Z",
+          location: "1.997776516629, 5.468399803731",
+          amount: 100,
+          cost: 1000,
+        },
+        {
+          date: "2025-08-03T08:45:00Z",
+          location: "1.997776516629, 5.468399803731",
+          amount: 100,
+          cost: 1000,
+        },
+        {
+          date: "2025-08-03T08:45:00Z",
+          location: "1.997776516629, 5.468399803731",
+          amount: 100,
+          cost: 1000,
+        },
+        {
+          date: "2025-08-03T08:45:00Z",
+          location: "1.997776516629, 5.468399803731",
+          amount: 100,
+          cost: 1000,
+        },
+      ],
+      trips: [
+        {
+          from: "Delhi",
+          to: "Agra",
+          distance: 210, // in km
+          duration: 150, // in minutes
+          date: "2025-07-15T12:00:00.000Z",
+        },
+        {
+          from: "Delhi",
+          to: "Agra",
+          distance: 210, // in km
+          duration: 150, // in minutes
+          date: "2025-07-15T12:00:00.000Z",
+        },
+      ],
+      maintenanceLogs: [
+        { date: "2024-05-30", description: "Oil Change" },
+        { date: "2024-06-15", description: "Tyre Replacement" },
+      ],
+      documents: {
+        rcNumber: "KA01AB1234",
+        rcExpiry: "2026-05-30",
+        fitnessExpiry: "2025-11-20",
+        puccExpiry: "2024-10-15",
+        insuranceExpiry: "2025-08-12",
+        rcDocUrl: "/docs/rc.pdf",
+        insuranceDocUrl: "/docs/insurance.pdf",
+        // fitnessDocUrl: undefined
+        // puccDocUrl: undefined
+        // invoiceDocUrl: undefined
+      },
       mainImage:
         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThezfLUBEdwWoPGkwXksYE3rWZXOUTjfYNng&s",
       images: [
