@@ -13,4 +13,10 @@ router.get(
   apiController.totalVehicles
 );
 
+router.post(API_VERSION + "/admin/login", apiController.operatorLogin);
+
+router.get(API_VERSION + "/admin/operators", apiController.operators);
+
+router.get(API_VERSION + "/admin/vehicles", apiController.vehiclesAdmin);
+
 module.exports = router;

@@ -155,6 +155,44 @@ exports.totalVehicles = (req, res) => {
   res.status(200).json(vehicles);
 };
 
+exports.operators = (req, res) => {
+  const range = JSON.parse(req.query.range);
+
+  const operators = [];
+
+  for (let index = range[0]; index < range[1] + 1; index++) {
+    operators.push({
+      id: index,
+      name: "John Doe",
+      email: "john@example.com",
+      status: "active",
+    });
+  }
+
+  res.set("Access-Control-Expose-Headers", "Content-Range");
+  res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
+  res.status(200).json(operators);
+};
+
+exports.vehiclesAdmin = (req, res) => {
+  const range = JSON.parse(req.query.range);
+
+  const vehicles = [];
+
+  for (let index = range[0]; index < range[1] + 1; index++) {
+    vehicles.push({
+      id: index,
+      plateNumber: "XYZ-123",
+      status: "active",
+      operatorId: 1,
+    });
+  }
+
+  res.set("Access-Control-Expose-Headers", "Content-Range");
+  res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
+  res.status(200).json(vehicles);
+};
+
 function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
