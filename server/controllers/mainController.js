@@ -6,6 +6,10 @@ exports.home = (req, res) => {
   res.render("index");
 };
 
+exports.operatorsComdocs = express.static(
+  path.join(__dirname, "../uploads/operators/comdocs")
+);
+
 // exports.user = express.static(path.join(__dirname, "../client/user/build"));
 // exports.userFallback = (req, res) => {
 //   res.sendFile(path.join(__dirname, "../client/user/build/index.html"));

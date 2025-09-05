@@ -1,32 +1,12 @@
 import { type FC } from "react";
 import { useLocation } from "react-router-dom";
-import {
-  AppBar,
-  UserMenu,
-  // MenuItemLink,
-  Logout,
-  LoadingIndicator,
-} from "react-admin";
+import { AppBar, UserMenu, Logout, LoadingIndicator } from "react-admin";
 import { Typography, Box } from "@mui/material";
-// import SettingsIcon from "@mui/icons-material/Settings";
-// import HelpIcon from "@mui/icons-material/Help";
-// import FeedbackIcon from "@mui/icons-material/Feedback";
 import LogoImage from "../assets/logo.png";
 import routeTitles from "./routes-title";
 
 const CustomUserMenu: FC = (props) => (
   <UserMenu {...props}>
-    {/* <MenuItemLink
-      to="/manage-account"
-      primaryText="Manage Account"
-      leftIcon={<SettingsIcon />}
-    />
-    <MenuItemLink to="/support" primaryText="Support" leftIcon={<HelpIcon />} />
-    <MenuItemLink
-      to="/feedback"
-      primaryText="Feedback"
-      leftIcon={<FeedbackIcon />}
-    /> */}
     <Logout />
   </UserMenu>
 );

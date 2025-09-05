@@ -3,12 +3,13 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
+const mongoose = require("mongoose");
 
 const mainRoutes = require("./routes/mainRoutes");
 const apiRoutes = require("./routes/apiRoutes");
 
 const app = express();
-const PORT = process.env.PORT;
+const REST_PORT = process.env.REST_PORT;
 
 app.set("view engine", "ejs");
 app.set("views", "views");
@@ -31,6 +32,18 @@ app.use((req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(REST_PORT, () => {
+  console.log(`Rest Server running on http://localhost:${REST_PORT}`);
 });
+
+const DB_URL = process.env.DB_URL;
+const DB_PORT = process.env.DB_PORT;
+
+mongoose
+  .connect(DB_URL)
+  .then(() => {
+    app.listen(DB_PORT, () =>
+      console.log(`DB Server running on http://localhost:${DB_PORT}`)
+    );
+  })
+  .catch((err) => console.error("MongoDB error:", err));
