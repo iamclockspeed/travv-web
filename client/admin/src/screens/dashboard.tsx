@@ -1,3 +1,5 @@
+import { useDataProvider } from "react-admin";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, Box, Typography, Grid } from "@mui/material";
 import { DashCard } from "../components/custom-uis";
 import TimeToLeaveIcon from "@mui/icons-material/TimeToLeave";
@@ -7,7 +9,21 @@ import PersonIcon from "@mui/icons-material/Person";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import PersonOffIcon from "@mui/icons-material/PersonOff";
 
+interface OperatorCounts {
+  total: number;
+  active: number;
+  debarred: number;
+}
+
 const Dashboard = () => {
+  const dataProvider = useDataProvider();
+
+  const { data: opCounts = { total: 0, active: 0, debarred: 0 } } =
+    useQuery<OperatorCounts>({
+      queryKey: ["operatorCounts"],
+      queryFn: () => (dataProvider as any).getOperatorCounts(),
+    });
+
   return (
     <Card sx={{ height: "100%" }}>
       <CardContent>
@@ -21,19 +37,19 @@ const Dashboard = () => {
             </Box>
             <Grid container spacing={2} mt={1}>
               <DashCard
-                v1={251}
+                v1={opCounts.total}
                 v2="Total Operators"
                 icon={<PersonIcon fontSize="large" />}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={opCounts.active}
                 v2="Active Operators"
                 icon={<RecordVoiceOverIcon fontSize="large" />}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={opCounts.debarred}
                 v2="Debarred Operators"
                 icon={<PersonOffIcon fontSize="large" />}
               ></DashCard>

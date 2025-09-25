@@ -10,9 +10,9 @@ import {
   OperatorShow,
   OperatorCreate,
 } from "./screens/operators";
-// import VehicleList from "./screens/vehicles";
+import { VehicleList, VehicleCreate } from "./screens/vehicles";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
-// import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
+import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
 
 const App = () => (
   <Admin
@@ -30,7 +30,12 @@ const App = () => (
       edit={OperatorEdit}
       show={OperatorShow}
     />
-    {/* <Resource icon={DirectionsBusIcon} name="vehicles" list={VehicleList} /> */}
+    <Resource
+      icon={DirectionsBusIcon}
+      name="vehicles"
+      list={VehicleList}
+      create={VehicleCreate}
+    />
   </Admin>
 );
 

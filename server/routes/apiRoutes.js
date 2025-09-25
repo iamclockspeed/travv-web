@@ -7,18 +7,24 @@ const SECRET_KEY = process.env.JWT_SECRET;
 
 const API_VERSION = "/" + process.env.API_VERSION;
 
-// router.post(API_VERSION + "/operator/login", apiController.operatorLogin);
+router.post(API_VERSION + "/operator/login", apiController.operatorLogin);
 
-// router.get(API_VERSION + "/operator/vehicles", apiController.vehicles);
+router.get(API_VERSION + "/operator/vehicles", apiController.vehicles);
 
-// router.get(
-//   API_VERSION + "/operator/totalVehicles",
-//   apiController.totalVehicles
-// );
+router.get(
+  API_VERSION + "/operator/totalVehicles",
+  apiController.totalVehicles
+);
 
 // Admin APIS
 
 router.post(API_VERSION + "/admin/login", apiController.adminLogin);
+
+router.get(
+  API_VERSION + "/admin/operators/count",
+  verifyToken,
+  apiController.countOperators
+);
 
 router.get(
   API_VERSION + "/admin/operators",
@@ -54,6 +60,12 @@ router.post(
   API_VERSION + "/admin/operators/comdocs/upload",
   verifyToken,
   apiController.uploadOperatorsComdocs
+);
+
+router.get(
+  API_VERSION + "/admin/vehicles",
+  verifyToken,
+  apiController.listVehicles
 );
 
 function verifyToken(req, res, next) {
