@@ -204,7 +204,7 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// Admin Controllers
+// ----- Admin Controllers ------
 
 exports.adminLogin = (req, res) => {
   if (
@@ -225,6 +225,8 @@ exports.adminLogin = (req, res) => {
     user: user,
   });
 };
+
+// Operators Implementations
 
 exports.createOperator = async (req, res) => {
   try {
@@ -264,10 +266,12 @@ exports.listOperators = async (req, res) => {
   try {
     const range = JSON.parse(req.query.range);
     const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
     const sortField = sort[0];
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
-    const operators = await Operator.find()
+    const operators = await Operator.find(filter)
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -366,14 +370,89 @@ exports.uploadOperatorsComdocs = [
   },
 ];
 
+// Vehicles Implementations
+
+exports.createVehicle = async (req, res) => {
+  try {
+    const { device: deviceId, operator: operatorId, ...vehicleData } = req.body;
+
+    let device = null;
+
+    if (deviceId) {
+      device = await Device.findById(deviceId);
+      if (!device) throw new Error("Device not found");
+      if (device.alreadyInUse) throw new Error("Device already in use");
+    }
+
+    const vehicle = new Vehicle({
+      ...vehicleData,
+      operator: operatorId
+        ? {
+            id: operatorId,
+            assignedAt: new Date(),
+          }
+        : {
+            assignedAt: new Date(),
+          },
+      device: device
+        ? {
+            id: device._id,
+            deviceId: device.deviceId,
+            assignedAt: new Date(),
+          }
+        : {
+            assignedAt: new Date(),
+          },
+    });
+
+    await vehicle.save();
+
+    if (device) {
+      device.alreadyInUse = true;
+      device.vehicle = {
+        id: vehicle._id,
+        registrationNumber: vehicle.registrationNumber,
+        assignedAt: new Date(),
+      };
+      await device.save();
+    }
+
+    const data = { id: vehicle._id, ...vehicle.toObject() };
+
+    return res.status(201).json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+// This needs to be modified
+exports.countVehicles = async (req, res) => {
+  try {
+    const total = await Vehicle.countDocuments();
+    // const active = await Vehicle.countDocuments({ status: true });
+    // const offline = await Vehicle.countDocuments({ status: false });
+
+    return res.json({
+      ok: true,
+      total,
+      active: total,
+      offline: 0,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 exports.listVehicles = async (req, res) => {
   try {
     const range = JSON.parse(req.query.range);
     const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
     const sortField = sort[0];
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
-    const vehicles = await Vehicle.find()
+    const vehicles = await Vehicle.find(filter)
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -389,6 +468,261 @@ exports.listVehicles = async (req, res) => {
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
     return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getVehicle = async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle) return res.status(404).json({ error: "Not found" });
+
+    const data = { id: vehicle._id, ...vehicle.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateVehicle = async (req, res) => {
+  try {
+    const { device: deviceId, operator: operatorId, ...updateData } = req.body;
+
+    let vehicle = await Vehicle.findById(req.params.id);
+    if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+
+    if (
+      Object.prototype.toString.call(deviceId) !== "[object Object]" &&
+      deviceId !== undefined
+    ) {
+      if (
+        vehicle.device &&
+        vehicle.device.id &&
+        vehicle.device.id.toString() !== deviceId
+      ) {
+        const oldDevice = await Device.findById(vehicle.device.id);
+        if (oldDevice) {
+          oldDevice.alreadyInUse = false;
+          oldDevice.vehicle = {
+            assignedAt: new Date(),
+          };
+          await oldDevice.save();
+        }
+      }
+
+      if (deviceId) {
+        const newDevice = await Device.findById(deviceId);
+        if (!newDevice) throw new Error("Device not found");
+        if (newDevice.alreadyInUse) throw new Error("Device already in use");
+
+        vehicle.device = {
+          id: newDevice._id,
+          deviceId: newDevice.deviceId,
+          assignedAt: new Date(),
+        };
+
+        newDevice.alreadyInUse = true;
+        newDevice.vehicle = {
+          id: vehicle._id,
+          registrationNumber: vehicle.registrationNumber,
+          assignedAt: new Date(),
+        };
+        await newDevice.save();
+      } else {
+        vehicle.device = {
+          assignedAt: new Date(),
+        };
+      }
+    }
+
+    if (
+      operatorId &&
+      Object.prototype.toString.call(operatorId) !== "[object Object]"
+    ) {
+      vehicle.operator = {
+        id: operatorId,
+        assignedAt: new Date(),
+      };
+    }
+
+    Object.assign(vehicle, updateData);
+
+    await vehicle.save();
+
+    const data = { id: vehicle._id, ...vehicle.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteVehicle = async (req, res) => {
+  try {
+    await Vehicle.findByIdAndDelete(req.params.id);
+    return res.json({ message: "Deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+const vehiclesDocsDir = path.join(__dirname, "../uploads/vehicles/docs");
+if (!fs.existsSync(vehiclesDocsDir)) {
+  fs.mkdirSync(vehiclesDocsDir, { recursive: true });
+}
+
+const vehiclesDocsStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, vehiclesDocsDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, uuidv4() + ext);
+  },
+});
+
+const vehiclesDocsUpload = multer({ storage: vehiclesDocsStorage });
+
+exports.uploadVehiclesDocs = [
+  vehiclesDocsUpload.single("file"),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const fileUrl = `/uploads/vehicles/docs/${req.file.filename}`;
+
+    return res.json({ ok: true, url: fileUrl });
+  },
+];
+
+const vehiclesImagesDir = path.join(__dirname, "../uploads/vehicles/images");
+if (!fs.existsSync(vehiclesImagesDir)) {
+  fs.mkdirSync(vehiclesImagesDir, { recursive: true });
+}
+
+const vehiclesImagesStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, vehiclesImagesDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, uuidv4() + ext);
+  },
+});
+
+const vehiclesImagesUpload = multer({ storage: vehiclesImagesStorage });
+
+exports.uploadVehiclesImages = [
+  vehiclesImagesUpload.single("file"),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    const fileUrl = `/uploads/vehicles/images/${req.file.filename}`;
+
+    return res.json({ ok: true, url: fileUrl });
+  },
+];
+
+// Devices Implementations
+
+exports.createDevice = async (req, res) => {
+  try {
+    const device = new Device(req.body);
+
+    await device.save();
+
+    const data = { id: device._id, ...device.toObject() };
+
+    return res.status(201).json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+exports.countDevices = async (req, res) => {
+  try {
+    const total = await Device.countDocuments();
+    const used = await Device.countDocuments({ alreadyInUse: true });
+    const unused = await Device.countDocuments({ alreadyInUse: false });
+
+    return res.json({
+      ok: true,
+      total,
+      used,
+      unused,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getDevice = async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) return res.status(404).json({ error: "Not found" });
+
+    const data = { id: device._id, ...device.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.listDevices = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const devices = await Device.find(filter)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Device.countDocuments();
+
+    const data = devices.map((op) => ({
+      id: op._id,
+      ...op.toObject(),
+    }));
+
+    res.setHeader("Content-Range", `devices ${range[0]}-${range[1]}/${total}`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateDevice = async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) return res.status(404).json({ error: "Not found" });
+
+    Object.assign(device, req.body);
+
+    await device.save();
+
+    const data = { id: device._id, ...device.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteDevice = async (req, res) => {
+  try {
+    await Device.findByIdAndDelete(req.params.id);
+    return res.json({ message: "Deleted successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

@@ -8,20 +8,38 @@ import WifiOffIcon from "@mui/icons-material/WifiOff";
 import PersonIcon from "@mui/icons-material/Person";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import PersonOffIcon from "@mui/icons-material/PersonOff";
+import DevicesIcon from "@mui/icons-material/Devices";
+import UsbIcon from "@mui/icons-material/Usb";
+import UsbOffIcon from "@mui/icons-material/UsbOff";
 
-interface OperatorCounts {
+interface TypeCounts {
   total: number;
   active: number;
   debarred: number;
+  used: number;
+  unused: number;
+  offline: number;
 }
 
 const Dashboard = () => {
   const dataProvider = useDataProvider();
 
   const { data: opCounts = { total: 0, active: 0, debarred: 0 } } =
-    useQuery<OperatorCounts>({
+    useQuery<TypeCounts>({
       queryKey: ["operatorCounts"],
       queryFn: () => (dataProvider as any).getOperatorCounts(),
+    });
+
+  const { data: veCounts = { total: 0, active: 0, offline: 0 } } =
+    useQuery<TypeCounts>({
+      queryKey: ["vehicleCounts"],
+      queryFn: () => (dataProvider as any).getVehicleCounts(),
+    });
+
+  const { data: dvCounts = { total: 0, used: 0, unused: 0 } } =
+    useQuery<TypeCounts>({
+      queryKey: ["deviceCounts"],
+      queryFn: () => (dataProvider as any).getDeviceCounts(),
     });
 
   return (
@@ -62,21 +80,46 @@ const Dashboard = () => {
             </Box>
             <Grid container spacing={2} mt={1}>
               <DashCard
-                v1={251}
+                v1={veCounts.total}
                 v2="Total Vehicles"
                 icon={<TimeToLeaveIcon fontSize="large" />}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={veCounts.active}
                 v2="Active Vahicles"
                 icon={<PlayCircleIcon fontSize="large" />}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={veCounts.offline}
                 v2="Offline Vahicles"
                 icon={<WifiOffIcon fontSize="large" />}
+              ></DashCard>
+            </Grid>
+          </Box>
+
+          <Box>
+            <Box>
+              <Typography variant="h6">🟥 Devices</Typography>
+            </Box>
+            <Grid container spacing={2} mt={1}>
+              <DashCard
+                v1={dvCounts.total}
+                v2="Total Devices"
+                icon={<DevicesIcon fontSize="large" />}
+              ></DashCard>
+
+              <DashCard
+                v1={dvCounts.used}
+                v2="Connected Devices"
+                icon={<UsbIcon fontSize="large" />}
+              ></DashCard>
+
+              <DashCard
+                v1={dvCounts.unused}
+                v2="Un-used Devices"
+                icon={<UsbOffIcon fontSize="large" />}
               ></DashCard>
             </Grid>
           </Box>

@@ -16,9 +16,11 @@ router.get(
   apiController.totalVehicles
 );
 
-// Admin APIS
+// --------- Admin APIS ------------
 
 router.post(API_VERSION + "/admin/login", apiController.adminLogin);
+
+// Operators Implementations
 
 router.get(
   API_VERSION + "/admin/operators/count",
@@ -62,11 +64,95 @@ router.post(
   apiController.uploadOperatorsComdocs
 );
 
+// Vehicles Implementations
+
+router.get(
+  API_VERSION + "/admin/vehicles/count",
+  verifyToken,
+  apiController.countVehicles
+);
+
 router.get(
   API_VERSION + "/admin/vehicles",
   verifyToken,
   apiController.listVehicles
 );
+
+router.get(
+  API_VERSION + "/admin/vehicles/:id",
+  verifyToken,
+  apiController.getVehicle
+);
+
+router.post(
+  API_VERSION + "/admin/vehicles",
+  verifyToken,
+  apiController.createVehicle
+);
+
+router.put(
+  API_VERSION + "/admin/vehicles/:id",
+  verifyToken,
+  apiController.updateVehicle
+);
+
+router.delete(
+  API_VERSION + "/admin/vehicles/:id",
+  verifyToken,
+  apiController.deleteVehicle
+);
+
+router.post(
+  API_VERSION + "/admin/vehicles/docs/upload",
+  verifyToken,
+  apiController.uploadVehiclesDocs
+);
+
+router.post(
+  API_VERSION + "/admin/vehicles/images/upload",
+  verifyToken,
+  apiController.uploadVehiclesImages
+);
+
+// Devices Implementations
+
+router.get(
+  API_VERSION + "/admin/devices/count",
+  verifyToken,
+  apiController.countDevices
+);
+
+router.get(
+  API_VERSION + "/admin/devices",
+  verifyToken,
+  apiController.listDevices
+);
+
+router.get(
+  API_VERSION + "/admin/devices/:id",
+  verifyToken,
+  apiController.getDevice
+);
+
+router.post(
+  API_VERSION + "/admin/devices",
+  verifyToken,
+  apiController.createDevice
+);
+
+router.put(
+  API_VERSION + "/admin/devices/:id",
+  verifyToken,
+  apiController.updateDevice
+);
+
+router.delete(
+  API_VERSION + "/admin/devices/:id",
+  verifyToken,
+  apiController.deleteDevice
+);
+
+// Others Implementations
 
 function verifyToken(req, res, next) {
   const authHeader = req.headers["authorization"];

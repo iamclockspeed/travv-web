@@ -13,6 +13,11 @@ const deviceSchema = new mongoose.Schema(
       enum: ["GPS"],
       default: "GPS",
     },
+    vehicle: {
+      id: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle" },
+      registrationNumber: { type: String },
+      assignedAt: { type: Date, default: Date.now },
+    },
     alreadyInUse: {
       type: Boolean,
       default: false,

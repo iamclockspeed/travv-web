@@ -50,7 +50,12 @@ const vehicleSchema = new mongoose.Schema(
       },
     ],
     device: {
-      deviceId: { type: mongoose.Schema.Types.ObjectId, ref: "Device" },
+      id: { type: mongoose.Schema.Types.ObjectId, ref: "Device" },
+      deviceId: { type: String },
+      assignedAt: { type: Date, default: Date.now },
+    },
+    operator: {
+      id: { type: mongoose.Schema.Types.ObjectId, ref: "Operator" },
       assignedAt: { type: Date, default: Date.now },
     },
   },

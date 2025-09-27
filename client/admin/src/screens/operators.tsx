@@ -42,6 +42,7 @@ const PostBulkActionButtons = (props: BulkDeleteButtonProps) => (
 export const OperatorList = () => (
   <List resource="operators" actions={<OperatorListActions />}>
     <Datagrid rowClick="show" bulkActionButtons={<PostBulkActionButtons />}>
+      <TextField source="id" />
       <TextField source="fullLegalName" label="Legal Name" />
       <EmailField source="email" />
       <TextField source="phone" />
@@ -147,8 +148,8 @@ export const OperatorShow = () => (
       <TextField source="phone" />
       <TextField source="password" />
       <TextField source="status" />
-      <TextField source="companyName" />
-      <TextField source="companyAddress" />
+      <TextField source="companyName" defaultValue="NA" />
+      <TextField source="companyAddress" defaultValue="NA" />
       <ArrayField source="companyDocuments">
         <Datagrid bulkActionButtons={false}>
           <FileField source="url" title="type" label="Uploaded File" />
