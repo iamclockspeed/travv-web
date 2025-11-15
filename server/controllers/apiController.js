@@ -1,30 +1,16 @@
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const Operator = require("../models/operators");
 const Vehicle = require("../models/vehicles");
 const Device = require("../models/devices");
+const Feedback = require("../models/feedbacks");
+const Support = require("../models/supports");
 const multer = require("multer");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const fs = require("fs");
 
 const SECRET_KEY = process.env.JWT_SECRET;
-
-exports.operatorLogin = (req, res) => {
-  if (req.body.username !== "jiten" && req.body.password !== "jiten") {
-    res.status(401).json({
-      error: "Invalid User and Password",
-    });
-  }
-  const user = {
-    id: 1,
-    name: "Jitendra",
-  };
-  const token = jwt.sign(user, SECRET_KEY, { expiresIn: "1h" });
-  res.status(200).json({
-    token: token,
-    user: user,
-  });
-};
 
 exports.vehicles = (req, res) => {
   const vehicles = [];
@@ -204,12 +190,135 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+// ----- Operators Panel Controllers ------
+
+exports.operatorLogin = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const operator = await Operator.findOne({
+      $or: [
+        { email: username },
+        { phone: username },
+        { profileName: username },
+      ],
+    });
+
+    if (!operator) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, operator.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    const payload = {
+      id: operator._id,
+      name: operator.profileName,
+      email: operator.email,
+      phone: operator.phone,
+    };
+
+    const token = jwt.sign(payload, SECRET_KEY, {
+      expiresIn: "1h",
+    });
+
+    return res.status(200).json({
+      token: token,
+      user: payload,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getOperatorUserInfo = async (req, res) => {
+  try {
+    const operator = await Operator.findById(req.user.id).select(
+      "profileName email phone"
+    );
+
+    if (!operator) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+      id: operator._id,
+      ok: true,
+      name: operator.profileName,
+      email: operator.email,
+      phone: operator.phone,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.updateOperatorPassword = async (req, res) => {
+  try {
+    const { newPassword: password } = req.body;
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    await Operator.findByIdAndUpdate(req.user.id, {
+      password: password,
+      passwordHash: hashed,
+    });
+
+    return res.json({ ok: true, message: "Password updated" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Operators Supports Implementations
+
+exports.createSupport = async (req, res) => {
+  try {
+    const support = new Support(req.body);
+
+    await support.save();
+
+    const data = { id: support._id, ok: true, ...support.toObject() };
+
+    return res.status(201).json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+// Operators Feedbacks Implementations
+
+exports.createFeedback = async (req, res) => {
+  try {
+    const feedback = new Feedback(req.body);
+
+    await feedback.save();
+
+    const data = { id: feedback._id, ok: true, ...feedback.toObject() };
+
+    return res.status(201).json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
 // ----- Admin Controllers ------
 
 exports.adminLogin = (req, res) => {
   if (
-    req.body.username !== process.env.ADMIN_ID &&
-    req.body.password !== process.env.ADMIN_PASSWPRD
+    req.body.username !== process.env.ADMIN_ID ||
+    req.body.password !== process.env.ADMIN_PASSWORD
   ) {
     return res.status(401).json({
       message: "Invalid Credentials",
@@ -723,6 +832,73 @@ exports.deleteDevice = async (req, res) => {
   try {
     await Device.findByIdAndDelete(req.params.id);
     return res.json({ message: "Deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// Feedbacks Implementations
+
+exports.listFeedbacks = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const feedbacks = await Feedback.find(filter)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Feedback.countDocuments();
+
+    const data = feedbacks.map((op) => ({
+      id: op._id,
+      ...op.toObject(),
+    }));
+
+    res.setHeader(
+      "Content-Range",
+      `feedbacks ${range[0]}-${range[1]}/${total}`
+    );
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// Supports Implementations
+
+exports.listSupports = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const supports = await Support.find(filter)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Support.countDocuments();
+
+    const data = supports.map((op) => ({
+      id: op._id,
+      ...op.toObject(),
+    }));
+
+    res.setHeader("Content-Range", `supports ${range[0]}-${range[1]}/${total}`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

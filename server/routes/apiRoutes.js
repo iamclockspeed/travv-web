@@ -1,13 +1,44 @@
 const express = require("express");
 const router = express.Router();
 const apiController = require("../controllers/apiController");
+const Operator = require("../models/operators");
 const jwt = require("jsonwebtoken");
 
 const SECRET_KEY = process.env.JWT_SECRET;
 
 const API_VERSION = "/" + process.env.API_VERSION;
 
+// --------- Operators Panel APIS ------------
+
 router.post(API_VERSION + "/operator/login", apiController.operatorLogin);
+
+router.get(
+  API_VERSION + "/operator/userInfo",
+  verifyOperatorToken,
+  apiController.getOperatorUserInfo
+);
+
+router.put(
+  API_VERSION + "/operator/changePassword",
+  verifyOperatorToken,
+  apiController.updateOperatorPassword
+);
+
+// Operators Supports Implementations
+
+router.post(
+  API_VERSION + "/operator/support",
+  verifyOperatorToken,
+  apiController.createSupport
+);
+
+// Operators Feedbacks Implementations
+
+router.post(
+  API_VERSION + "/operator/feedback",
+  verifyOperatorToken,
+  apiController.createFeedback
+);
 
 router.get(API_VERSION + "/operator/vehicles", apiController.vehicles);
 
@@ -24,43 +55,43 @@ router.post(API_VERSION + "/admin/login", apiController.adminLogin);
 
 router.get(
   API_VERSION + "/admin/operators/count",
-  verifyToken,
+  verifyAdminToken,
   apiController.countOperators
 );
 
 router.get(
   API_VERSION + "/admin/operators",
-  verifyToken,
+  verifyAdminToken,
   apiController.listOperators
 );
 
 router.get(
   API_VERSION + "/admin/operators/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.getOperator
 );
 
 router.post(
   API_VERSION + "/admin/operators",
-  verifyToken,
+  verifyAdminToken,
   apiController.createOperator
 );
 
 router.put(
   API_VERSION + "/admin/operators/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.updateOperator
 );
 
 router.delete(
   API_VERSION + "/admin/operators/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.deleteOperator
 );
 
 router.post(
   API_VERSION + "/admin/operators/comdocs/upload",
-  verifyToken,
+  verifyAdminToken,
   apiController.uploadOperatorsComdocs
 );
 
@@ -68,49 +99,49 @@ router.post(
 
 router.get(
   API_VERSION + "/admin/vehicles/count",
-  verifyToken,
+  verifyAdminToken,
   apiController.countVehicles
 );
 
 router.get(
   API_VERSION + "/admin/vehicles",
-  verifyToken,
+  verifyAdminToken,
   apiController.listVehicles
 );
 
 router.get(
   API_VERSION + "/admin/vehicles/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.getVehicle
 );
 
 router.post(
   API_VERSION + "/admin/vehicles",
-  verifyToken,
+  verifyAdminToken,
   apiController.createVehicle
 );
 
 router.put(
   API_VERSION + "/admin/vehicles/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.updateVehicle
 );
 
 router.delete(
   API_VERSION + "/admin/vehicles/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.deleteVehicle
 );
 
 router.post(
   API_VERSION + "/admin/vehicles/docs/upload",
-  verifyToken,
+  verifyAdminToken,
   apiController.uploadVehiclesDocs
 );
 
 router.post(
   API_VERSION + "/admin/vehicles/images/upload",
-  verifyToken,
+  verifyAdminToken,
   apiController.uploadVehiclesImages
 );
 
@@ -118,43 +149,59 @@ router.post(
 
 router.get(
   API_VERSION + "/admin/devices/count",
-  verifyToken,
+  verifyAdminToken,
   apiController.countDevices
 );
 
 router.get(
   API_VERSION + "/admin/devices",
-  verifyToken,
+  verifyAdminToken,
   apiController.listDevices
 );
 
 router.get(
   API_VERSION + "/admin/devices/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.getDevice
 );
 
 router.post(
   API_VERSION + "/admin/devices",
-  verifyToken,
+  verifyAdminToken,
   apiController.createDevice
 );
 
 router.put(
   API_VERSION + "/admin/devices/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.updateDevice
 );
 
 router.delete(
   API_VERSION + "/admin/devices/:id",
-  verifyToken,
+  verifyAdminToken,
   apiController.deleteDevice
+);
+
+// Feedbacks Implementations
+
+router.get(
+  API_VERSION + "/admin/feedbacks",
+  verifyAdminToken,
+  apiController.listFeedbacks
+);
+
+// Supports Implementations
+
+router.get(
+  API_VERSION + "/admin/supports",
+  verifyAdminToken,
+  apiController.listSupports
 );
 
 // Others Implementations
 
-function verifyToken(req, res, next) {
+function verifyAdminToken(req, res, next) {
   const authHeader = req.headers["authorization"];
 
   const token = authHeader && authHeader.split(" ")[1];
@@ -165,8 +212,45 @@ function verifyToken(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
-    req.user = decoded;
-    next();
+
+    console.log(decoded);
+
+    if (decoded.name === process.env.ADMIN_NAME) {
+      req.user = decoded;
+      return next();
+    }
+
+    return res.status(403).json({ message: "Not authorized as admin" });
+  } catch (err) {
+    return res.status(403).json({ message: "Invalid or expired token" });
+  }
+}
+
+async function verifyOperatorToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "Token missing" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+
+    const operatorId = decoded.id;
+    const operator = await Operator.findById(operatorId);
+
+    if (!operator) {
+      return res.status(404).json({ message: "Operator not found" });
+    }
+
+    if (operator.status !== "active") {
+      return res.status(403).json({ message: "Operator is not active" });
+    }
+
+    req.user = operator;
+    return next();
   } catch (err) {
     return res.status(403).json({ message: "Invalid or expired token" });
   }
