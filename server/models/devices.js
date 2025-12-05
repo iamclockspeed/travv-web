@@ -23,6 +23,13 @@ const deviceSchema = new mongoose.Schema(
       default: false,
     },
     installedOn: { type: Date, default: Date.now },
+    status: {
+      type: String,
+      enum: ["offline", "idle", "active"],
+      default: "offline",
+    },
+    lastSeenAt: { type: Date },
+    raw: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { timestamps: true }
 );

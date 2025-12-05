@@ -313,6 +313,81 @@ exports.createFeedback = async (req, res) => {
   }
 };
 
+// Operators Dashboard Stats
+
+exports.operatorDashboardStats = async (req, res) => {
+  try {
+    const operatorId = req.user.id;
+
+    const vehicles = await Vehicle.find(
+      { "operator.id": operatorId },
+      { _id: 1 }
+    ).lean();
+
+    const vehicleIds = vehicles.map((v) => v._id);
+
+    const totalVehicles = vehicleIds.length;
+
+    if (totalVehicles === 0) {
+      return res.json({
+        ok: true,
+        totalDevices: 0,
+        active: 0,
+        idle: 0,
+        offline: 0,
+      });
+    }
+
+    const deviceStats = await Device.aggregate([
+      { $match: { "vehicle.id": { $in: vehicleIds } } },
+      {
+        $group: {
+          _id: { $ifNull: ["$status", "offline"] },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const getCount = (status) =>
+      deviceStats.find((s) => s._id === status)?.count || 0;
+
+    const activeVehicles = getCount("active");
+    const idleVehicles = getCount("idle");
+    const offlineVehicles = getCount("offline");
+
+    return res.json({
+      ok: true,
+      totalVehicles,
+      activeVehicles,
+      idleVehicles,
+      offlineVehicles,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getLocations = async (req, res) => {
+  try {
+    const device = await Device.find({ imei: "353691842179219" });
+
+    const latlng = device[0].raw.state.reported.latlng;
+
+    const [lat, lng] = latlng.split(",").map(Number);
+
+    const data = {
+      id: 1,
+      lat: lat,
+      lng: lng,
+    };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 // ----- Admin Controllers ------
 
 exports.adminLogin = (req, res) => {

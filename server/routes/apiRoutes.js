@@ -40,6 +40,20 @@ router.post(
   apiController.createFeedback
 );
 
+// Operators Dashboard Stats Implementations
+
+router.get(
+  API_VERSION + "/operator/dash-stats",
+  verifyOperatorToken,
+  apiController.operatorDashboardStats
+);
+
+router.get(
+  API_VERSION + "/operator/locations",
+  verifyOperatorToken,
+  apiController.getLocations
+);
+
 router.get(API_VERSION + "/operator/vehicles", apiController.vehicles);
 
 router.get(
@@ -239,6 +253,7 @@ async function verifyOperatorToken(req, res, next) {
     const decoded = jwt.verify(token, SECRET_KEY);
 
     const operatorId = decoded.id;
+
     const operator = await Operator.findById(operatorId);
 
     if (!operator) {

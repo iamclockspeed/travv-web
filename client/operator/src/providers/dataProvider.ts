@@ -69,6 +69,13 @@ const dataProvider: DataProvider = {
   submitSupport: async (payload: SupportPayload) => {
     return defaultDataProvider.create("support", { data: payload });
   },
+
+  getOperatorStats: async () => {
+    const url = `${import.meta.env.VITE_REST_SERVER_URL}/dash-stats`;
+    const response = await httpClient(url);
+    if (!response.json.ok) throw new Error("Network error");
+    return response.json;
+  },
 };
 
 export default dataProvider;

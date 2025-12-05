@@ -1,4 +1,6 @@
 import { useNavigate } from "react-router-dom";
+import { useDataProvider } from "react-admin";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, Box, Typography, Grid } from "@mui/material";
 import { DashCard } from "../components/custom-uis";
 import TimeToLeaveIcon from "@mui/icons-material/TimeToLeave";
@@ -15,8 +17,29 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 
+interface TypeCounts {
+  totalVehicles: number;
+  activeVehicles: number;
+  idleVehicles: number;
+  offlineVehicles: number;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  const dataProvider = useDataProvider();
+
+  const {
+    data: stats = {
+      totalVehicles: 0,
+      activeVehicles: 0,
+      idleVehicles: 0,
+      offlineVehicles: 0,
+    },
+  } = useQuery<TypeCounts>({
+    queryKey: ["dashStats"],
+    queryFn: () => (dataProvider as any).getOperatorStats(),
+  });
 
   return (
     <Card>
@@ -31,28 +54,28 @@ const Dashboard = () => {
             </Box>
             <Grid container spacing={2} mt={1}>
               <DashCard
-                v1={251}
+                v1={stats.totalVehicles}
                 v2="Total Vehicles"
                 icon={<TimeToLeaveIcon fontSize="large" />}
                 onClick={() => navigate("/total-vehicles")}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={stats.activeVehicles}
                 v2="Active Vahicles"
                 icon={<PlayCircleIcon fontSize="large" />}
                 onClick={() => navigate("/active-vehicles")}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={stats.idleVehicles}
                 v2="Idle Vahicles"
                 icon={<AccessTimeFilledIcon fontSize="large" />}
                 onClick={() => navigate("/idle-vehicles")}
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={stats.offlineVehicles}
                 v2="Offline Vahicles"
                 icon={<WifiOffIcon fontSize="large" />}
                 onClick={() => navigate("/offline-vehicles")}
@@ -60,7 +83,7 @@ const Dashboard = () => {
             </Grid>
           </Box>
 
-          <Box>
+          {/* <Box>
             <Box>
               <Typography variant="h6">🔴 Safety Alerts</Typography>
             </Box>
@@ -146,7 +169,7 @@ const Dashboard = () => {
                 onClick={() => navigate("/upcomming-maintenance-vehicles")}
               ></DashCard>
             </Grid>
-          </Box>
+          </Box> */}
         </Box>
       </CardContent>
     </Card>
