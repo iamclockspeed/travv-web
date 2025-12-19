@@ -1,6 +1,6 @@
 const net = require("net");
 const EventEmitter = require("events");
-const Device = require("./models/devices");
+const Device = require("../models/devices");
 
 class TeltonikaServer extends EventEmitter {
   constructor(options = {}) {
@@ -29,7 +29,7 @@ class TeltonikaServer extends EventEmitter {
             if (this.approvedDevicesList.has(deviceIMEI)) {
               console.log("Device already approved");
               socket.deviceIMEI = deviceIMEI;
-              socket.write(Buffer.from([1]));
+              socket.write(Buffer.from([0x01]));
             } else {
               try {
                 const device = await Device.findOne({ imei: deviceIMEI });
@@ -37,11 +37,11 @@ class TeltonikaServer extends EventEmitter {
                   console.log("IMEI found in DB:", deviceIMEI);
                   console.log("Approving Device:", deviceIMEI);
                   this.approvedDevicesList.add(deviceIMEI);
-                  socket.write(Buffer.from([1]));
+                  socket.write(Buffer.from([0x01]));
                 } else {
                   console.log("IMEI NOT found in DB");
                   console.log("Rejecting Connection");
-                  socket.write(Buffer.from([0]));
+                  socket.write(Buffer.from([0x00]));
                 }
               } catch (err) {
                 console.error("DB Error:", err);

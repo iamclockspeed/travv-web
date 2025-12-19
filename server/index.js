@@ -5,10 +5,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
 
-const TeltonikaServer = require("./teltonikaServer");
-// const TeltonikaMessage = require("./models/TeltonikaMessage");
-
-const Device = require("./models/devices");
+const TeltonikaServer = require("./teltonika/teltonikaServer");
+const TeltonikaController = require("./teltonika/teltonikaController");
 
 const mainRoutes = require("./routes/mainRoutes");
 const apiRoutes = require("./routes/apiRoutes");
@@ -65,54 +63,7 @@ const tracker = new TeltonikaServer({
   isDBConnected: isDBConnected,
 });
 
-tracker.on("message", async ({ meta, payload, raw }) => {
-  try {
-    const deviceIMEI = meta.deviceIMEI;
-
-    if (!isDBConnected()) return;
-
-    console.log(raw);
-
-    await Device.updateOne(
-      { imei: deviceIMEI },
-      {
-        $set: {
-          status: "active",
-          lastSeenAt: new Date(),
-          raw: payload,
-        },
-      }
-    );
-
-    console.log(`[Teltonika] Saved message from ${deviceIMEI}`);
-  } catch (err) {
-    console.error("[Teltonika] failed to save message:", err);
-  }
+const tController = new TeltonikaController({
+  isDBConnected: isDBConnected,
 });
-
-tracker.on("raw", ({ raw, socket }) => {
-  console.warn(
-    "[Teltonika] raw data received (could not parse to JSON):",
-    raw && raw.slice(0, 400)
-  );
-});
-
-tracker.start();
-
-const OFFLINE_AFTER_SECONDS = 10;
-
-setInterval(async () => {
-  if (!isDBConnected()) return;
-
-  const cutoff = new Date(Date.now() - OFFLINE_AFTER_SECONDS * 1000);
-
-  await Device.updateMany(
-    {
-      lastSeenAt: { $lt: cutoff },
-      status: { $ne: "offline" },
-    },
-    {
-      $set: { status: "offline" },
-    }
-  );
-}, 1000);
+tController.attachTracker(tracker);

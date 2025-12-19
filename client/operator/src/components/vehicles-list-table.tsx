@@ -34,7 +34,7 @@ import Slider from "react-slick";
 // --------------------------------------------
 interface Vehicle {
   id: number;
-  vehicleNumber: string;
+  registrationNumber: string;
   type: string;
   make: string;
   model: string;
@@ -46,7 +46,9 @@ interface Vehicle {
   trips: Trip[];
   maintenanceLogs: MaintenanceLog[];
   documents: VehicleDocuments;
-  mainImage: string;
+  mainImage: {
+    url: string;
+  };
   images: string[];
 }
 
@@ -191,7 +193,9 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
         {/* Basic Details */}
         <TabPanel value={tabIndex} index={0}>
           <Box display="flex" flexDirection="column" gap={1}>
-            <Typography>Vehicle Number: {vehicle.vehicleNumber}</Typography>
+            <Typography>
+              Vehicle Number: {vehicle.registrationNumber}
+            </Typography>
             <Typography>Type: {vehicle.type}</Typography>
             <Typography>
               Make / Model: {vehicle.make} {vehicle.model}
@@ -937,7 +941,7 @@ const VehicleTable: React.FC = () => {
           render={(record: Vehicle) =>
             record.mainImage ? (
               <img
-                src={record.mainImage}
+                src={import.meta.env.VITE_BACKEND_HOST + record.mainImage.url}
                 alt="vehicle image"
                 style={{
                   width: 40,
@@ -951,7 +955,7 @@ const VehicleTable: React.FC = () => {
             )
           }
         />
-        <TextField source="vehicleNumber" />
+        <TextField source="registrationNumber" />
         <FunctionField
           label="Make / Model"
           render={(record) => `${record.make} ${record.model}`}

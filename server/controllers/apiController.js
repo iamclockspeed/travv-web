@@ -29,124 +29,124 @@ exports.vehicles = (req, res) => {
   res.status(200).json(vehicles);
 };
 
-exports.totalVehicles = (req, res) => {
-  const range = JSON.parse(req.query.range);
+// exports.totalVehicles = (req, res) => {
+//   const range = JSON.parse(req.query.range);
 
-  const vehicles = [];
+//   const vehicles = [];
 
-  const vehiclesActivity = ["active", "idle", "offline"];
+//   const vehiclesActivity = ["active", "idle", "offline"];
 
-  for (let index = range[0]; index < range[1] + 1; index++) {
-    const vehicle = {
-      id: index,
-      vehicleNumber: "OD 15 N " + Math.floor(1000 + Math.random() * 9000),
-      type: "Bus",
-      make: "Mahindra",
-      model: "225",
-      status: vehiclesActivity[getRandomInt(0, vehiclesActivity.length - 1)],
-      fuelType: "ev",
-      location: `${(Math.random() * 8).toFixed(12)}, ${(
-        Math.random() * 8
-      ).toFixed(12)}`,
-      alertHistory: [
-        {
-          type: "over speeding",
-          time: "2025-08-03T08:45:00Z",
-          location: "1.997776516629, 5.468399803731",
-          unhandled: true,
-        },
-        {
-          type: "low fuel",
-          time: "2025-08-01T13:22:00Z",
-          location: "1.997776516629, 5.468399803731",
-          unhandled: true,
-        },
-        {
-          type: "geo fence violation",
-          time: "2025-08-01T13:22:00Z",
-          location: "1.997776516629, 5.468399803731",
-          unhandled: true,
-        },
-        {
-          type: "unplug & towing",
-          time: "2025-08-01T13:22:00Z",
-          location: "1.997776516629, 5.468399803731",
-          unhandled: false,
-        },
-      ],
-      fuelLogs: [
-        {
-          date: "2025-08-03T08:45:00Z",
-          location: "1.997776516629, 5.468399803731",
-          amount: 100,
-          cost: 1000,
-        },
-        {
-          date: "2025-08-03T08:45:00Z",
-          location: "1.997776516629, 5.468399803731",
-          amount: 100,
-          cost: 1000,
-        },
-        {
-          date: "2025-08-03T08:45:00Z",
-          location: "1.997776516629, 5.468399803731",
-          amount: 100,
-          cost: 1000,
-        },
-        {
-          date: "2025-08-03T08:45:00Z",
-          location: "1.997776516629, 5.468399803731",
-          amount: 100,
-          cost: 1000,
-        },
-      ],
-      trips: [
-        {
-          from: "Delhi",
-          to: "Agra",
-          distance: 210, // in km
-          duration: 150, // in minutes
-          date: "2025-07-15T12:00:00.000Z",
-        },
-        {
-          from: "Delhi",
-          to: "Agra",
-          distance: 210, // in km
-          duration: 150, // in minutes
-          date: "2025-07-15T12:00:00.000Z",
-        },
-      ],
-      maintenanceLogs: [
-        { date: "2024-05-30", description: "Oil Change" },
-        { date: "2024-06-15", description: "Tyre Replacement" },
-      ],
-      documents: {
-        rcNumber: "KA01AB1234",
-        rcExpiry: "2026-05-30",
-        fitnessExpiry: "2025-11-20",
-        puccExpiry: "2024-10-15",
-        insuranceExpiry: "2025-08-12",
-        rcDocUrl: "/docs/rc.pdf",
-        insuranceDocUrl: "/docs/insurance.pdf",
-        // fitnessDocUrl: undefined
-        // puccDocUrl: undefined
-        // invoiceDocUrl: undefined
-      },
-      mainImage:
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThezfLUBEdwWoPGkwXksYE3rWZXOUTjfYNng&s",
-      images: [
-        "https://www.dashbus.com/wp-content/uploads/Transit-Bus-Exterior.png",
-        "https://image.made-in-china.com/202f0j00fDrqOsaGuPgt/24-40-Passengers-Car-Enterprise-Commuter-Bus-Passenger-Bus-Tourist-Bus-Passenger-Car.webp",
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-yldSwtbqpHFDRcrBGJ1Uim7HkF6GagrQ3Ne8Uh75SlyOk-0mwy8tsb-YlvJl1YW_SuI&usqp=CAU",
-        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqkQVjXRiVSiI_s3CcfWVZROVhs0SeIax1oGU1gOSxYM5F_lnbCoMju_EtLdNDRB9EKGw&usqp=CAU",
-      ],
-    };
-    vehicles.push(vehicle);
-  }
-  res.set("Access-Control-Expose-Headers", "Content-Range");
-  res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
-  res.status(200).json(vehicles);
-};
+//   for (let index = range[0]; index < range[1] + 1; index++) {
+//     const vehicle = {
+//       id: index,
+//       vehicleNumber: "OD 15 N " + Math.floor(1000 + Math.random() * 9000),
+//       type: "Bus",
+//       make: "Mahindra",
+//       model: "225",
+//       status: vehiclesActivity[getRandomInt(0, vehiclesActivity.length - 1)],
+//       fuelType: "ev",
+//       location: `${(Math.random() * 8).toFixed(12)}, ${(
+//         Math.random() * 8
+//       ).toFixed(12)}`,
+//       alertHistory: [
+//         {
+//           type: "over speeding",
+//           time: "2025-08-03T08:45:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           unhandled: true,
+//         },
+//         {
+//           type: "low fuel",
+//           time: "2025-08-01T13:22:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           unhandled: true,
+//         },
+//         {
+//           type: "geo fence violation",
+//           time: "2025-08-01T13:22:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           unhandled: true,
+//         },
+//         {
+//           type: "unplug & towing",
+//           time: "2025-08-01T13:22:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           unhandled: false,
+//         },
+//       ],
+//       fuelLogs: [
+//         {
+//           date: "2025-08-03T08:45:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           amount: 100,
+//           cost: 1000,
+//         },
+//         {
+//           date: "2025-08-03T08:45:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           amount: 100,
+//           cost: 1000,
+//         },
+//         {
+//           date: "2025-08-03T08:45:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           amount: 100,
+//           cost: 1000,
+//         },
+//         {
+//           date: "2025-08-03T08:45:00Z",
+//           location: "1.997776516629, 5.468399803731",
+//           amount: 100,
+//           cost: 1000,
+//         },
+//       ],
+//       trips: [
+//         {
+//           from: "Delhi",
+//           to: "Agra",
+//           distance: 210, // in km
+//           duration: 150, // in minutes
+//           date: "2025-07-15T12:00:00.000Z",
+//         },
+//         {
+//           from: "Delhi",
+//           to: "Agra",
+//           distance: 210, // in km
+//           duration: 150, // in minutes
+//           date: "2025-07-15T12:00:00.000Z",
+//         },
+//       ],
+//       maintenanceLogs: [
+//         { date: "2024-05-30", description: "Oil Change" },
+//         { date: "2024-06-15", description: "Tyre Replacement" },
+//       ],
+//       documents: {
+//         rcNumber: "KA01AB1234",
+//         rcExpiry: "2026-05-30",
+//         fitnessExpiry: "2025-11-20",
+//         puccExpiry: "2024-10-15",
+//         insuranceExpiry: "2025-08-12",
+//         rcDocUrl: "/docs/rc.pdf",
+//         insuranceDocUrl: "/docs/insurance.pdf",
+//         // fitnessDocUrl: undefined
+//         // puccDocUrl: undefined
+//         // invoiceDocUrl: undefined
+//       },
+//       mainImage:
+//         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThezfLUBEdwWoPGkwXksYE3rWZXOUTjfYNng&s",
+//       images: [
+//         "https://www.dashbus.com/wp-content/uploads/Transit-Bus-Exterior.png",
+//         "https://image.made-in-china.com/202f0j00fDrqOsaGuPgt/24-40-Passengers-Car-Enterprise-Commuter-Bus-Passenger-Bus-Tourist-Bus-Passenger-Car.webp",
+//         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-yldSwtbqpHFDRcrBGJ1Uim7HkF6GagrQ3Ne8Uh75SlyOk-0mwy8tsb-YlvJl1YW_SuI&usqp=CAU",
+//         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqkQVjXRiVSiI_s3CcfWVZROVhs0SeIax1oGU1gOSxYM5F_lnbCoMju_EtLdNDRB9EKGw&usqp=CAU",
+//       ],
+//     };
+//     vehicles.push(vehicle);
+//   }
+//   res.set("Access-Control-Expose-Headers", "Content-Range");
+//   res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
+//   res.status(200).json(vehicles);
+// };
 
 exports.operators = (req, res) => {
   const range = JSON.parse(req.query.range);
@@ -370,7 +370,7 @@ exports.operatorDashboardStats = async (req, res) => {
 
 exports.getLocations = async (req, res) => {
   try {
-    const device = await Device.find({ imei: "353691842179219" });
+    const device = await Device.find({ imei: "353691840096712" });
 
     const latlng = device[0].raw.state.reported.latlng;
 
@@ -381,6 +381,41 @@ exports.getLocations = async (req, res) => {
       lat: lat,
       lng: lng,
     };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// Operators All Vehicles
+
+exports.totalVehicles = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const vehicles = await Vehicle.find(filter)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Vehicle.countDocuments();
+
+    const data = vehicles.map((op) => ({
+      id: op._id,
+      mainImage: op.images.length > 0 ? op.images[0] : null,
+      ...op.toObject(),
+    }));
+
+    console.log(data);
+
+    res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
     return res.json(data);
   } catch (err) {

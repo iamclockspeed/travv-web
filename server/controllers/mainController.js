@@ -10,6 +10,10 @@ exports.operatorsComdocs = express.static(
   path.join(__dirname, "../uploads/operators/comdocs")
 );
 
+exports.vehicleImages = express.static(
+  path.join(__dirname, "../uploads/vehicles/images")
+);
+
 // exports.user = express.static(path.join(__dirname, "../client/user/build"));
 // exports.userFallback = (req, res) => {
 //   res.sendFile(path.join(__dirname, "../client/user/build/index.html"));

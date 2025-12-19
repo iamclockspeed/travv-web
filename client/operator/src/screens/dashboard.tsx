@@ -83,7 +83,7 @@ const Dashboard = () => {
             </Grid>
           </Box>
 
-          {/* <Box>
+          <Box>
             <Box>
               <Typography variant="h6">🔴 Safety Alerts</Typography>
             </Box>
@@ -169,7 +169,7 @@ const Dashboard = () => {
                 onClick={() => navigate("/upcomming-maintenance-vehicles")}
               ></DashCard>
             </Grid>
-          </Box> */}
+          </Box>
         </Box>
       </CardContent>
     </Card>

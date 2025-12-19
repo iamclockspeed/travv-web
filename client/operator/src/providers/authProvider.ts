@@ -3,7 +3,9 @@ import type { AuthProvider } from "react-admin";
 const authProvider: AuthProvider = {
   login: async ({ username, password }) => {
     const response = await fetch(
-      import.meta.env.VITE_REST_SERVER_URL + "/login",
+      import.meta.env.VITE_BACKEND_HOST +
+        import.meta.env.VITE_BACKEND_API_URL +
+        "/login",
       {
         method: "POST",
         body: JSON.stringify({ username, password }),

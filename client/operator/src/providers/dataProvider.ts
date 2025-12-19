@@ -36,7 +36,7 @@ const httpClient = (
 };
 
 const defaultDataProvider = simpleRestProvider(
-  import.meta.env.VITE_REST_SERVER_URL,
+  import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL,
   httpClient
 );
 
@@ -44,7 +44,9 @@ const dataProvider: DataProvider = {
   ...defaultDataProvider,
 
   getUserInformation: async () => {
-    const url = `${import.meta.env.VITE_REST_SERVER_URL}/userInfo`;
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/userInfo`;
     const response = await httpClient(url);
 
     if (!response.json.ok) throw new Error("Network error");
@@ -52,7 +54,9 @@ const dataProvider: DataProvider = {
   },
 
   changePassword: async (newPassword: string) => {
-    const url = `${import.meta.env.VITE_REST_SERVER_URL}/changePassword`;
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/changePassword`;
     const response = await httpClient(url, {
       method: "PUT",
       body: JSON.stringify({ newPassword }),
@@ -71,7 +75,9 @@ const dataProvider: DataProvider = {
   },
 
   getOperatorStats: async () => {
-    const url = `${import.meta.env.VITE_REST_SERVER_URL}/dash-stats`;
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/dash-stats`;
     const response = await httpClient(url);
     if (!response.json.ok) throw new Error("Network error");
     return response.json;

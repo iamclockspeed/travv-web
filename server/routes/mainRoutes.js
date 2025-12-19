@@ -6,6 +6,7 @@ router.use("/", mainController.homeStatic);
 router.get("/", mainController.home);
 
 router.use("/uploads/operators/comdocs", mainController.operatorsComdocs);
+router.use("/uploads/vehicles/images", mainController.vehicleImages);
 
 // router.use("/app", mainController.user);
 // router.get("/app/*", mainController.userFallback);

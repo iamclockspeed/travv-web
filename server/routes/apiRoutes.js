@@ -227,8 +227,6 @@ function verifyAdminToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, SECRET_KEY);
 
-    console.log(decoded);
-
     if (decoded.name === process.env.ADMIN_NAME) {
       req.user = decoded;
       return next();
