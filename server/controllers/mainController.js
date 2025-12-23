@@ -10,6 +10,10 @@ exports.operatorsComdocs = express.static(
   path.join(__dirname, "../uploads/operators/comdocs")
 );
 
+exports.vehicleDocs = express.static(
+  path.join(__dirname, "../uploads/vehicles/docs")
+);
+
 exports.vehicleImages = express.static(
   path.join(__dirname, "../uploads/vehicles/images")
 );

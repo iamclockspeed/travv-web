@@ -25,6 +25,9 @@ import {
   Show,
   SimpleShowLayout,
   AutocompleteInput,
+  type FileFieldProps,
+  useRecordContext,
+  FormDataConsumer,
 } from "react-admin";
 import { useQuery } from "@tanstack/react-query";
 
@@ -163,7 +166,12 @@ export const VehicleCreate = () => {
                 "image/*": [".png", ".jpg", ".jpeg"],
               }}
             >
-              <FileField source="src" title="title" />
+              <FileField
+                source="src"
+                title="title"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
             </FileInput>
             <BooleanInput source="verified" />
           </SimpleFormIterator>
@@ -178,7 +186,12 @@ export const VehicleCreate = () => {
                 "image/*": [".png", ".jpg", ".jpeg"],
               }}
             >
-              <FileField source="src" title="title" />
+              <FileField
+                source="src"
+                title="title"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
             </FileInput>
           </SimpleFormIterator>
         </ArrayInput>
@@ -280,31 +293,69 @@ export const VehicleEdit = () => {
             />
             <TextInput source="number" />
             <DateInput source="expiryDate" />
-            <FileInput
-              source="url"
-              label="Upload File"
-              accept={{
-                "application/pdf": [".pdf"],
-                "image/*": [".png", ".jpg", ".jpeg"],
-              }}
-            >
-              <FileField source="src" title="title" />
-            </FileInput>
+            <FormDataConsumer>
+              {({ scopedFormData }) => (
+                <FileInput
+                  source="url"
+                  label="Upload File"
+                  accept={{
+                    "application/pdf": [".pdf"],
+                    "image/*": [".png", ".jpg", ".jpeg"],
+                  }}
+                  format={(value) => {
+                    if (typeof value != "string") {
+                      return value;
+                    } else {
+                      return {
+                        src: import.meta.env.VITE_BACKEND_HOST + value,
+                        title: scopedFormData?.type,
+                      };
+                    }
+                  }}
+                >
+                  <FileField
+                    source="src"
+                    title="title"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                </FileInput>
+              )}
+            </FormDataConsumer>
             <BooleanInput source="verified" />
           </SimpleFormIterator>
         </ArrayInput>
         <ArrayInput source="images">
           <SimpleFormIterator>
             <TextInput source="description" />
-            <FileInput
-              source="url"
-              label="Upload File"
-              accept={{
-                "image/*": [".png", ".jpg", ".jpeg"],
-              }}
-            >
-              <FileField source="src" title="title" />
-            </FileInput>
+            <FormDataConsumer>
+              {({ scopedFormData }) => (
+                <FileInput
+                  source="url"
+                  label="Upload File"
+                  accept={{
+                    "image/*": [".png", ".jpg", ".jpeg"],
+                  }}
+                  format={(value) => {
+                    if (typeof value != "string") {
+                      return value;
+                    } else {
+                      return {
+                        src: import.meta.env.VITE_BACKEND_HOST + value,
+                        title: scopedFormData?.description,
+                      };
+                    }
+                  }}
+                >
+                  <FileField
+                    source="src"
+                    title="title"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                </FileInput>
+              )}
+            </FormDataConsumer>
           </SimpleFormIterator>
         </ArrayInput>
       </SimpleForm>
@@ -329,16 +380,48 @@ export const VehicleShow = () => (
       />
       <TextField source="operator.id" label="Operator ID" defaultValue="NA" />
       <ArrayField source="documents">
-        <Datagrid bulkActionButtons={false}>
-          <FileField source="url" title="type" label="Uploaded File" />
+        <Datagrid bulkActionButtons={false} rowClick={false}>
+          <FileWithHost
+            source="url"
+            title="type"
+            label="Uploaded File"
+            target="_blank"
+            rel="noopener noreferrer"
+          />
           <BooleanField source="verified" label="Verified" />
         </Datagrid>
       </ArrayField>
       <ArrayField source="images">
-        <Datagrid bulkActionButtons={false}>
-          <FileField source="url" title="type" label="Uploaded File" />
+        <Datagrid bulkActionButtons={false} rowClick={false}>
+          <FileWithHost
+            source="url"
+            title="description"
+            label="Uploaded File"
+            target="_blank"
+            rel="noopener noreferrer"
+          />
         </Datagrid>
       </ArrayField>
     </SimpleShowLayout>
   </Show>
 );
+
+type FileRecord = {
+  id: number;
+  url: string;
+};
+
+const FileWithHost = (props: FileFieldProps<FileRecord>) => {
+  const record = useRecordContext<FileRecord>();
+  if (!record?.url) return null;
+
+  return (
+    <FileField
+      {...props}
+      record={{
+        ...record,
+        url: `${import.meta.env.VITE_BACKEND_HOST}${record.url}`,
+      }}
+    />
+  );
+};

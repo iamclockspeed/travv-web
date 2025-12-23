@@ -12,184 +12,6 @@ const fs = require("fs");
 
 const SECRET_KEY = process.env.JWT_SECRET;
 
-exports.vehicles = (req, res) => {
-  const vehicles = [];
-
-  for (let index = 0; index < 10; index++) {
-    const vehicle = {
-      id: index,
-      name: "Jitendra",
-      lat: Math.random() * 5,
-      lng: Math.random() * 5,
-    };
-    vehicles.push(vehicle);
-  }
-  res.set("Access-Control-Expose-Headers", "Content-Range");
-  res.set("Content-Range", `items 0-9/10`);
-  res.status(200).json(vehicles);
-};
-
-// exports.totalVehicles = (req, res) => {
-//   const range = JSON.parse(req.query.range);
-
-//   const vehicles = [];
-
-//   const vehiclesActivity = ["active", "idle", "offline"];
-
-//   for (let index = range[0]; index < range[1] + 1; index++) {
-//     const vehicle = {
-//       id: index,
-//       vehicleNumber: "OD 15 N " + Math.floor(1000 + Math.random() * 9000),
-//       type: "Bus",
-//       make: "Mahindra",
-//       model: "225",
-//       status: vehiclesActivity[getRandomInt(0, vehiclesActivity.length - 1)],
-//       fuelType: "ev",
-//       location: `${(Math.random() * 8).toFixed(12)}, ${(
-//         Math.random() * 8
-//       ).toFixed(12)}`,
-//       alertHistory: [
-//         {
-//           type: "over speeding",
-//           time: "2025-08-03T08:45:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           unhandled: true,
-//         },
-//         {
-//           type: "low fuel",
-//           time: "2025-08-01T13:22:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           unhandled: true,
-//         },
-//         {
-//           type: "geo fence violation",
-//           time: "2025-08-01T13:22:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           unhandled: true,
-//         },
-//         {
-//           type: "unplug & towing",
-//           time: "2025-08-01T13:22:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           unhandled: false,
-//         },
-//       ],
-//       fuelLogs: [
-//         {
-//           date: "2025-08-03T08:45:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           amount: 100,
-//           cost: 1000,
-//         },
-//         {
-//           date: "2025-08-03T08:45:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           amount: 100,
-//           cost: 1000,
-//         },
-//         {
-//           date: "2025-08-03T08:45:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           amount: 100,
-//           cost: 1000,
-//         },
-//         {
-//           date: "2025-08-03T08:45:00Z",
-//           location: "1.997776516629, 5.468399803731",
-//           amount: 100,
-//           cost: 1000,
-//         },
-//       ],
-//       trips: [
-//         {
-//           from: "Delhi",
-//           to: "Agra",
-//           distance: 210, // in km
-//           duration: 150, // in minutes
-//           date: "2025-07-15T12:00:00.000Z",
-//         },
-//         {
-//           from: "Delhi",
-//           to: "Agra",
-//           distance: 210, // in km
-//           duration: 150, // in minutes
-//           date: "2025-07-15T12:00:00.000Z",
-//         },
-//       ],
-//       maintenanceLogs: [
-//         { date: "2024-05-30", description: "Oil Change" },
-//         { date: "2024-06-15", description: "Tyre Replacement" },
-//       ],
-//       documents: {
-//         rcNumber: "KA01AB1234",
-//         rcExpiry: "2026-05-30",
-//         fitnessExpiry: "2025-11-20",
-//         puccExpiry: "2024-10-15",
-//         insuranceExpiry: "2025-08-12",
-//         rcDocUrl: "/docs/rc.pdf",
-//         insuranceDocUrl: "/docs/insurance.pdf",
-//         // fitnessDocUrl: undefined
-//         // puccDocUrl: undefined
-//         // invoiceDocUrl: undefined
-//       },
-//       mainImage:
-//         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThezfLUBEdwWoPGkwXksYE3rWZXOUTjfYNng&s",
-//       images: [
-//         "https://www.dashbus.com/wp-content/uploads/Transit-Bus-Exterior.png",
-//         "https://image.made-in-china.com/202f0j00fDrqOsaGuPgt/24-40-Passengers-Car-Enterprise-Commuter-Bus-Passenger-Bus-Tourist-Bus-Passenger-Car.webp",
-//         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-yldSwtbqpHFDRcrBGJ1Uim7HkF6GagrQ3Ne8Uh75SlyOk-0mwy8tsb-YlvJl1YW_SuI&usqp=CAU",
-//         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSqkQVjXRiVSiI_s3CcfWVZROVhs0SeIax1oGU1gOSxYM5F_lnbCoMju_EtLdNDRB9EKGw&usqp=CAU",
-//       ],
-//     };
-//     vehicles.push(vehicle);
-//   }
-//   res.set("Access-Control-Expose-Headers", "Content-Range");
-//   res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
-//   res.status(200).json(vehicles);
-// };
-
-exports.operators = (req, res) => {
-  const range = JSON.parse(req.query.range);
-
-  const operators = [];
-
-  for (let index = range[0]; index < range[1] + 1; index++) {
-    operators.push({
-      id: index,
-      name: "John Doe",
-      email: "john@example.com",
-      status: "active",
-    });
-  }
-
-  res.set("Access-Control-Expose-Headers", "Content-Range");
-  res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
-  res.status(200).json(operators);
-};
-
-exports.vehiclesAdmin = (req, res) => {
-  const range = JSON.parse(req.query.range);
-
-  const vehicles = [];
-
-  for (let index = range[0]; index < range[1] + 1; index++) {
-    vehicles.push({
-      id: index,
-      plateNumber: "XYZ-123",
-      status: "active",
-      operatorId: 1,
-    });
-  }
-
-  res.set("Access-Control-Expose-Headers", "Content-Range");
-  res.set("Content-Range", `items ${range[0]}-${range[1]}/${1000}`);
-  res.status(200).json(vehicles);
-};
-
-function getRandomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 // ----- Operators Panel Controllers ------
 
 exports.operatorLogin = async (req, res) => {
@@ -211,6 +33,12 @@ exports.operatorLogin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, operator.passwordHash);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid password" });
+    }
+
+    if (operator.status != "active") {
+      return res
+        .status(401)
+        .json({ message: "User is debarred, contact admin." });
     }
 
     const payload = {

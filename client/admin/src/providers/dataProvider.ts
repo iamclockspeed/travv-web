@@ -23,7 +23,7 @@ const httpClient = (
 };
 
 const defaultDataProvider = simpleRestProvider(
-  import.meta.env.VITE_REST_SERVER_URL,
+  import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL,
   httpClient
 );
 
@@ -34,7 +34,9 @@ const uploadOperatorsDocuments = async (
   formData.append("file", file);
 
   const response = await httpClient(
-    `${import.meta.env.VITE_REST_SERVER_URL}/operators/comdocs/upload`,
+    `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/operators/comdocs/upload`,
     {
       method: "POST",
       body: formData,
@@ -55,7 +57,9 @@ const uploadVehiclesDocuments = async (
   formData.append("file", file);
 
   const response = await httpClient(
-    `${import.meta.env.VITE_REST_SERVER_URL}/vehicles/docs/upload`,
+    `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/vehicles/docs/upload`,
     {
       method: "POST",
       body: formData,
@@ -74,7 +78,9 @@ const uploadVehiclesImages = async (file: File): Promise<{ url: string }> => {
   formData.append("file", file);
 
   const response = await httpClient(
-    `${import.meta.env.VITE_REST_SERVER_URL}/vehicles/images/upload`,
+    `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/vehicles/images/upload`,
     {
       method: "POST",
       body: formData,
@@ -168,19 +174,25 @@ const dataProvider: DataProvider = {
   },
 
   getOperatorCounts: async () => {
-    const url = `${import.meta.env.VITE_REST_SERVER_URL}/operators/count`;
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/operators/count`;
     const response = await httpClient(url);
     if (!response.json.ok) throw new Error("Network error");
     return response.json;
   },
   getVehicleCounts: async () => {
-    const url = `${import.meta.env.VITE_REST_SERVER_URL}/vehicles/count`;
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/vehicles/count`;
     const response = await httpClient(url);
     if (!response.json.ok) throw new Error("Network error");
     return response.json;
   },
   getDeviceCounts: async () => {
-    const url = `${import.meta.env.VITE_REST_SERVER_URL}/devices/count`;
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/devices/count`;
     const response = await httpClient(url);
     if (!response.json.ok) throw new Error("Network error");
     return response.json;

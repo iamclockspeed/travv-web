@@ -41,7 +41,7 @@ interface Vehicle {
   fuelType: string;
   device: {
     id: {
-      lastSeenAt: number;
+      lastSeenAt: string;
       raw: {
         state: {
           reported: {
@@ -135,9 +135,10 @@ const ALERT_MAP: Record<string, { icon: string; color: string }> = {
   "upcoming maintenance": { icon: "⚙️", color: "#c0392b" },
 };
 
-function getStatusAsText(lastTimestamp: number) {
+function getStatusAsText(lastSeenAt: string) {
   const now = Date.now();
-  const diffInSeconds = (now - lastTimestamp) / 1000;
+
+  const diffInSeconds = (now - new Date(lastSeenAt).getTime()) / 1000;
 
   if (diffInSeconds <= 5) {
     return "active";
@@ -255,7 +256,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </Typography>
                 <Slider
                   dots
-                  infinite
+                  infinite={vehicle.images.length > 1}
                   speed={500}
                   slidesToShow={1}
                   slidesToScroll={1}
@@ -266,6 +267,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                       <img
                         src={import.meta.env.VITE_BACKEND_HOST + src.url}
                         alt={`${src.description}`}
+                        title={`${src.description}`}
                         style={{
                           width: "100%",
                           height: 300,

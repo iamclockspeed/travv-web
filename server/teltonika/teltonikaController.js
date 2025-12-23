@@ -18,7 +18,7 @@ class TeltonikaController {
           { imei: deviceIMEI },
           {
             $set: {
-              lastSeenAt: new Date(),
+              lastSeenAt: Date.now(),
               raw: payload,
             },
           }

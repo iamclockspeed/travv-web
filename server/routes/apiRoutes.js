@@ -54,10 +54,9 @@ router.get(
   apiController.getLocations
 );
 
-router.get(API_VERSION + "/operator/vehicles", apiController.vehicles);
-
 router.get(
   API_VERSION + "/operator/totalVehicles",
+  verifyOperatorToken,
   apiController.totalVehicles
 );
 

@@ -23,6 +23,9 @@ import {
   BooleanInput,
   BulkDeleteButton,
   type BulkDeleteButtonProps,
+  useRecordContext,
+  type FileFieldProps,
+  FormDataConsumer,
 } from "react-admin";
 
 // ---------- Actions ----------
@@ -86,7 +89,12 @@ export const OperatorCreate = () => (
               "image/*": [".png", ".jpg", ".jpeg"],
             }}
           >
-            <FileField source="src" title="title" />
+            <FileField
+              source="src"
+              title="title"
+              target="_blank"
+              rel="noopener noreferrer"
+            />
           </FileInput>
           <BooleanInput source="verified" />
         </SimpleFormIterator>
@@ -120,16 +128,36 @@ export const OperatorEdit = () => (
       <ArrayInput source="companyDocuments">
         <SimpleFormIterator>
           <TextInput source="type" label="Document Type" />
-          <FileInput
-            source="url"
-            label="Upload File"
-            accept={{
-              "application/pdf": [".pdf"],
-              "image/*": [".png", ".jpg", ".jpeg"],
-            }}
-          >
-            <FileField source="src" title="title" />
-          </FileInput>
+          <FormDataConsumer>
+            {({ scopedFormData }) => (
+              <FileInput
+                source="url"
+                label="Upload File"
+                accept={{
+                  "application/pdf": [".pdf"],
+                  "image/*": [".png", ".jpg", ".jpeg"],
+                }}
+                format={(value) => {
+                  if (typeof value != "string") {
+                    return value;
+                  } else {
+                    return {
+                      src: import.meta.env.VITE_BACKEND_HOST + value,
+                      title: scopedFormData?.type,
+                    };
+                  }
+                }}
+              >
+                <FileField
+                  source="src"
+                  title="title"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              </FileInput>
+            )}
+          </FormDataConsumer>
+
           <BooleanInput source="verified" />
         </SimpleFormIterator>
       </ArrayInput>
@@ -151,11 +179,37 @@ export const OperatorShow = () => (
       <TextField source="companyName" defaultValue="NA" />
       <TextField source="companyAddress" defaultValue="NA" />
       <ArrayField source="companyDocuments">
-        <Datagrid bulkActionButtons={false}>
-          <FileField source="url" title="type" label="Uploaded File" />
+        <Datagrid bulkActionButtons={false} rowClick={false}>
+          <FileWithHost
+            source="url"
+            title="type"
+            label="Uploaded File"
+            target="_blank"
+            rel="noopener noreferrer"
+          />
           <BooleanField source="verified" label="Verified" />
         </Datagrid>
       </ArrayField>
     </SimpleShowLayout>
   </Show>
 );
+
+type FileRecord = {
+  id: number;
+  url: string;
+};
+
+const FileWithHost = (props: FileFieldProps<FileRecord>) => {
+  const record = useRecordContext<FileRecord>();
+  if (!record?.url) return null;
+
+  return (
+    <FileField
+      {...props}
+      record={{
+        ...record,
+        url: `${import.meta.env.VITE_BACKEND_HOST}${record.url}`,
+      }}
+    />
+  );
+};
