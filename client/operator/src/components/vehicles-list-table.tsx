@@ -38,9 +38,19 @@ interface Vehicle {
   type: string;
   make: string;
   model: string;
-  status: string;
   fuelType: string;
-  location: string;
+  device: {
+    id: {
+      lastSeenAt: number;
+      raw: {
+        state: {
+          reported: {
+            latlng: string;
+          };
+        };
+      };
+    };
+  };
   alertHistory: VehicleAlert[];
   fuelLogs: FuelLog[];
   trips: Trip[];
@@ -49,7 +59,12 @@ interface Vehicle {
   mainImage: {
     url: string;
   };
-  images: string[];
+  images: [
+    {
+      url: string;
+      description: string;
+    }
+  ];
 }
 
 interface VehicleAlert {
@@ -120,6 +135,21 @@ const ALERT_MAP: Record<string, { icon: string; color: string }> = {
   "upcoming maintenance": { icon: "⚙️", color: "#c0392b" },
 };
 
+function getStatusAsText(lastTimestamp: number) {
+  const now = Date.now();
+  const diffInSeconds = (now - lastTimestamp) / 1000;
+
+  if (diffInSeconds <= 5) {
+    return "active";
+  }
+
+  if (diffInSeconds <= 25) {
+    return "idle";
+  }
+
+  return "offline";
+}
+
 // --------------------------------------------
 // ✅ Filters Component
 // --------------------------------------------
@@ -162,7 +192,9 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   if (!vehicle) return null;
 
   const [tabIndex, setTabIndex] = useState(0);
-  const [alertHistory, setAlertHistory] = useState(vehicle.alertHistory);
+  const [alertHistory, setAlertHistory] = useState(
+    vehicle.alertHistory ? vehicle.alertHistory : []
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -183,11 +215,11 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
           scrollButtons="auto"
         >
           <Tab label="Basic Details" />
-          <Tab label="Trips" />
+          {/* <Tab label="Trips" />
           <Tab label="Fuel Logs" />
           <Tab label="Alert History" />
           <Tab label="Maintenance Logs" />
-          <Tab label="Documents" />
+          <Tab label="Documents" /> */}
         </Tabs>
 
         {/* Basic Details */}
@@ -204,14 +236,17 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               Fuel: <FuelTypeBadge fuelType={vehicle.fuelType} />
             </Typography>
             <Typography>
-              Status: <StatusWithIcon status={vehicle.status} />
+              Status:{" "}
+              <StatusWithIcon
+                status={getStatusAsText(vehicle.device.id.lastSeenAt)}
+              />
             </Typography>
             <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               Location:
               <IconButton size="large" title="View on Map" sx={{ p: 0.5 }}>
                 <MapIcon fontSize="medium" />
               </IconButton>
-              {vehicle.location}
+              {vehicle.device.id.raw.state.reported.latlng}
             </Typography>
             {vehicle.images.length > 0 && (
               <Box sx={{ pb: 3 }}>
@@ -229,8 +264,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                   {vehicle.images.map((src, i) => (
                     <Box key={i}>
                       <img
-                        src={src}
-                        alt={`Vehicle image ${i + 1}`}
+                        src={import.meta.env.VITE_BACKEND_HOST + src.url}
+                        alt={`${src.description}`}
                         style={{
                           width: "100%",
                           height: 300,
@@ -246,7 +281,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
         </TabPanel>
 
         {/* Trips */}
-        <TabPanel value={tabIndex} index={1}>
+        {/* <TabPanel value={tabIndex} index={1}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             🚗 Trip Summary (Last 30 Days)
           </Typography>
@@ -336,10 +371,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               ✅ No Trips Recorded
             </Box>
           )}
-        </TabPanel>
+        </TabPanel> */}
 
         {/* Fuel Logs */}
-        <TabPanel value={tabIndex} index={2}>
+        {/* <TabPanel value={tabIndex} index={2}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             ⛽ Fuel Logs Summary (Last 30 Days)
           </Typography>
@@ -428,10 +463,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               ✅ No Fuel Logs
             </Box>
           )}
-        </TabPanel>
+        </TabPanel> */}
 
         {/* Alert History */}
-        <TabPanel value={tabIndex} index={3}>
+        {/* <TabPanel value={tabIndex} index={3}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             🚨 Alert Summary (Last 30 Days)
           </Typography>
@@ -569,10 +604,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               ✅ No Alerts
             </Box>
           )}
-        </TabPanel>
+        </TabPanel> */}
 
         {/* Maintenance Logs */}
-        <TabPanel value={tabIndex} index={4}>
+        {/* <TabPanel value={tabIndex} index={4}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             🛠️ Maintenance Summary (Last 30 Days)
           </Typography>
@@ -638,17 +673,17 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               ✅ No Maintenance Logs
             </Box>
           )}
-        </TabPanel>
+        </TabPanel> */}
 
         {/* Documents */}
-        <TabPanel value={tabIndex} index={5}>
+        {/* <TabPanel value={tabIndex} index={5}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             📄 Vehicle Documents
           </Typography>
 
-          <Box display="flex" flexDirection="column" gap={1.5}>
-            {/* RC */}
-            <Box
+          <Box display="flex" flexDirection="column" gap={1.5}> */}
+        {/* RC */}
+        {/* <Box
               sx={{
                 backgroundColor: "#f4f4f4",
                 borderLeft: `4px solid #2980b9`,
@@ -664,10 +699,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 Expiry Date:{" "}
                 {new Date(vehicle.documents.rcExpiry).toLocaleDateString()}
               </Typography>
-            </Box>
+            </Box> */}
 
-            {/* Fitness */}
-            <Box
+        {/* Fitness */}
+        {/* <Box
               sx={{
                 backgroundColor: "#f4f4f4",
                 borderLeft: `4px solid #8e44ad`,
@@ -683,10 +718,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 Expiry Date:{" "}
                 {new Date(vehicle.documents.fitnessExpiry).toLocaleDateString()}
               </Typography>
-            </Box>
+            </Box> */}
 
-            {/* PUCC */}
-            <Box
+        {/* PUCC */}
+        {/* <Box
               sx={{
                 backgroundColor: "#f4f4f4",
                 borderLeft: `4px solid #16a085`,
@@ -700,10 +735,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 Expiry Date:{" "}
                 {new Date(vehicle.documents.puccExpiry).toLocaleDateString()}
               </Typography>
-            </Box>
+            </Box> */}
 
-            {/* Insurance */}
-            <Box
+        {/* Insurance */}
+        {/* <Box
               sx={{
                 backgroundColor: "#f4f4f4",
                 borderLeft: `4px solid #d35400`,
@@ -720,10 +755,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 ).toLocaleDateString()}
               </Typography>
             </Box>
-          </Box>
+          </Box> */}
 
-          {/* 🔗 Optional Links (With Placeholder) */}
-          <Box sx={{ mt: 3 }}>
+        {/* 🔗 Optional Links (With Placeholder) */}
+        {/* <Box sx={{ mt: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               📎 Available Document Files
             </Typography>
@@ -775,8 +810,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </Box>
               ))}
             </Box>
-          </Box>
-        </TabPanel>
+          </Box> */}
+        {/* </TabPanel> */}
       </DialogContent>
     </Dialog>
   );
@@ -882,7 +917,7 @@ const LocationWithLink = () => {
       <IconButton title="View on Map">
         <MapIcon />
       </IconButton>
-      <span>{record.location}</span>
+      <span>{record.device.id.raw.state.reported.latlng}</span>
     </Box>
   ) : null;
 };
@@ -939,9 +974,9 @@ const VehicleTable: React.FC = () => {
         <FunctionField
           label="Image"
           render={(record: Vehicle) =>
-            record.mainImage ? (
+            record.images.length > 0 ? (
               <img
-                src={import.meta.env.VITE_BACKEND_HOST + record.mainImage.url}
+                src={import.meta.env.VITE_BACKEND_HOST + record.images[0].url}
                 alt="vehicle image"
                 style={{
                   width: 40,
@@ -962,7 +997,11 @@ const VehicleTable: React.FC = () => {
         />
         <FunctionField
           label="Status"
-          render={(record) => <StatusWithIcon status={record.status} />}
+          render={(record) => (
+            <StatusWithIcon
+              status={getStatusAsText(record.device.id.lastSeenAt)}
+            />
+          )}
         />
         <FunctionField label="Alerts" render={() => <AlertsWithBadges />} />
         <FunctionField label="Location" render={() => <LocationWithLink />} />

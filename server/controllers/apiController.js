@@ -400,6 +400,8 @@ exports.totalVehicles = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const vehicles = await Vehicle.find(filter)
+      .populate("device.id")
+      .populate("operator.id")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -408,11 +410,8 @@ exports.totalVehicles = async (req, res) => {
 
     const data = vehicles.map((op) => ({
       id: op._id,
-      mainImage: op.images.length > 0 ? op.images[0] : null,
       ...op.toObject(),
     }));
-
-    console.log(data);
 
     res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
