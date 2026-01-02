@@ -37,6 +37,7 @@ class TeltonikaServer extends EventEmitter {
                   console.log("IMEI found in DB:", deviceIMEI);
                   console.log("Approving Device:", deviceIMEI);
                   this.approvedDevicesList.add(deviceIMEI);
+                  socket.deviceIMEI = deviceIMEI;
                   socket.write(Buffer.from([0x01]));
                 } else {
                   console.log("IMEI NOT found in DB");

@@ -55,7 +55,7 @@ interface Vehicle {
   fuelLogs: FuelLog[];
   trips: Trip[];
   maintenanceLogs: MaintenanceLog[];
-  documents: VehicleDocuments;
+  documents: VehicleDocuments[];
   mainImage: {
     url: string;
   };
@@ -95,16 +95,10 @@ interface MaintenanceLog {
 }
 
 interface VehicleDocuments {
-  rcNumber: string;
-  rcExpiry: string;
-  fitnessExpiry: string;
-  puccExpiry: string;
-  insuranceExpiry: string;
-  rcDocUrl?: string;
-  insuranceDocUrl?: string;
-  fitnessDocUrl?: string;
-  puccDocUrl?: string;
-  invoiceDocUrl?: string;
+  number: string;
+  expiryDate: string;
+  url?: string;
+  type: string;
 }
 
 interface VehicleDetailsModalProps {
@@ -140,11 +134,11 @@ function getStatusAsText(lastSeenAt: string) {
 
   const diffInSeconds = (now - new Date(lastSeenAt).getTime()) / 1000;
 
-  if (diffInSeconds <= 5) {
+  if (diffInSeconds <= 2) {
     return "active";
   }
 
-  if (diffInSeconds <= 25) {
+  if (diffInSeconds <= 20) {
     return "idle";
   }
 
@@ -216,11 +210,11 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
           scrollButtons="auto"
         >
           <Tab label="Basic Details" />
-          {/* <Tab label="Trips" />
+          <Tab label="Trips" />
           <Tab label="Fuel Logs" />
           <Tab label="Alert History" />
-          <Tab label="Maintenance Logs" />
-          <Tab label="Documents" /> */}
+          {/* <Tab label="Maintenance Logs" /> */}
+          <Tab label="Documents" />
         </Tabs>
 
         {/* Basic Details */}
@@ -678,110 +672,40 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
         </TabPanel> */}
 
         {/* Documents */}
-        {/* <TabPanel value={tabIndex} index={5}>
+        <TabPanel value={tabIndex} index={4}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             📄 Vehicle Documents
           </Typography>
 
-          <Box display="flex" flexDirection="column" gap={1.5}> */}
-        {/* RC */}
-        {/* <Box
-              sx={{
-                backgroundColor: "#f4f4f4",
-                borderLeft: `4px solid #2980b9`,
-                p: 1.5,
-                borderRadius: 1,
-                boxShadow: 1,
-              }}
-            >
-              <Typography sx={{ fontWeight: 500 }}>
-                RC Number: {vehicle.documents.rcNumber}
-              </Typography>
-              <Typography variant="body2">
-                Expiry Date:{" "}
-                {new Date(vehicle.documents.rcExpiry).toLocaleDateString()}
-              </Typography>
-            </Box> */}
+          <Box display="flex" flexDirection="column" gap={1.5}>
+            {vehicle.documents.map((item) => (
+              <Box
+                sx={{
+                  backgroundColor: "#f4f4f4",
+                  borderLeft: `4px solid #2980b9`,
+                  p: 1.5,
+                  borderRadius: 1,
+                  boxShadow: 1,
+                }}
+              >
+                <Typography sx={{ fontWeight: 500 }}>
+                  {item.type} Number: {item.number}
+                </Typography>
+                <Typography variant="body2">
+                  Expiry Date: {new Date(item.expiryDate).toLocaleDateString()}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
 
-        {/* Fitness */}
-        {/* <Box
-              sx={{
-                backgroundColor: "#f4f4f4",
-                borderLeft: `4px solid #8e44ad`,
-                p: 1.5,
-                borderRadius: 1,
-                boxShadow: 1,
-              }}
-            >
-              <Typography sx={{ fontWeight: 500 }}>
-                Fitness Certificate
-              </Typography>
-              <Typography variant="body2">
-                Expiry Date:{" "}
-                {new Date(vehicle.documents.fitnessExpiry).toLocaleDateString()}
-              </Typography>
-            </Box> */}
-
-        {/* PUCC */}
-        {/* <Box
-              sx={{
-                backgroundColor: "#f4f4f4",
-                borderLeft: `4px solid #16a085`,
-                p: 1.5,
-                borderRadius: 1,
-                boxShadow: 1,
-              }}
-            >
-              <Typography sx={{ fontWeight: 500 }}>PUCC</Typography>
-              <Typography variant="body2">
-                Expiry Date:{" "}
-                {new Date(vehicle.documents.puccExpiry).toLocaleDateString()}
-              </Typography>
-            </Box> */}
-
-        {/* Insurance */}
-        {/* <Box
-              sx={{
-                backgroundColor: "#f4f4f4",
-                borderLeft: `4px solid #d35400`,
-                p: 1.5,
-                borderRadius: 1,
-                boxShadow: 1,
-              }}
-            >
-              <Typography sx={{ fontWeight: 500 }}>Insurance</Typography>
-              <Typography variant="body2">
-                Expiry Date:{" "}
-                {new Date(
-                  vehicle.documents.insuranceExpiry
-                ).toLocaleDateString()}
-              </Typography>
-            </Box>
-          </Box> */}
-
-        {/* 🔗 Optional Links (With Placeholder) */}
-        {/* <Box sx={{ mt: 3 }}>
+          {/* 🔗 Optional Links (With Placeholder) */}
+          <Box sx={{ mt: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               📎 Available Document Files
             </Typography>
 
             <Box display="flex" flexDirection="column" gap={1}>
-              {[
-                {
-                  name: "Registration Certificate",
-                  url: vehicle.documents.rcDocUrl,
-                },
-                { name: "Insurance", url: vehicle.documents.insuranceDocUrl },
-                {
-                  name: "Fitness Certificate",
-                  url: vehicle.documents.fitnessDocUrl,
-                },
-                { name: "PUCC", url: vehicle.documents.puccDocUrl },
-                {
-                  name: "Vehicle Invoice",
-                  url: vehicle.documents.invoiceDocUrl,
-                },
-              ].map((doc, i) => (
+              {vehicle.documents.map((doc, i) => (
                 <Box
                   key={i}
                   sx={{
@@ -794,10 +718,10 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                     boxShadow: 1,
                   }}
                 >
-                  <Typography sx={{ fontWeight: 500 }}>{doc.name}:</Typography>
+                  <Typography sx={{ fontWeight: 500 }}>{doc.type}:</Typography>
                   {doc.url ? (
                     <a
-                      href={doc.url}
+                      href={import.meta.env.VITE_BACKEND_HOST + doc.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: "#2980b9", textDecoration: "underline" }}
@@ -812,8 +736,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
                 </Box>
               ))}
             </Box>
-          </Box> */}
-        {/* </TabPanel> */}
+          </Box>
+        </TabPanel>
       </DialogContent>
     </Dialog>
   );

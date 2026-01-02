@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const Operator = require("../models/operators");
 const Vehicle = require("../models/vehicles");
 const Device = require("../models/devices");
+const DeviceMessage = require("../models/devicemessage");
 const Feedback = require("../models/feedbacks");
 const Support = require("../models/supports");
 const multer = require("multer");
@@ -147,47 +148,43 @@ exports.operatorDashboardStats = async (req, res) => {
   try {
     const operatorId = req.user.id;
 
-    const vehicles = await Vehicle.find(
-      { "operator.id": operatorId },
-      { _id: 1 }
-    ).lean();
+    const vehicles = await Vehicle.find({ "operator.id": operatorId }).populate(
+      "device.id"
+    );
 
-    const vehicleIds = vehicles.map((v) => v._id);
+    const totalVehicles = vehicles.length;
+    let activeVehicles = 0;
+    let idleVehicles = 0;
+    let excessiveIdleVehicles = 0;
+    let offlineVehicles = 0;
 
-    const totalVehicles = vehicleIds.length;
+    vehicles.forEach((vehicle) => {
+      const lastSeen = vehicle.device.id.lastSeenAt;
+      const now = Date.now();
+      const diffInSeconds = (now - new Date(lastSeen).getTime()) / 1000;
 
-    if (totalVehicles === 0) {
-      return res.json({
-        ok: true,
-        totalDevices: 0,
-        active: 0,
-        idle: 0,
-        offline: 0,
-      });
-    }
+      if (
+        vehicle.device.id.raw.state.reported["251"] &&
+        vehicle.device.id.raw.state.reported["251"] == 1
+      ) {
+        excessiveIdleVehicles += 1;
+      }
 
-    const deviceStats = await Device.aggregate([
-      { $match: { "vehicle.id": { $in: vehicleIds } } },
-      {
-        $group: {
-          _id: { $ifNull: ["$status", "offline"] },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const getCount = (status) =>
-      deviceStats.find((s) => s._id === status)?.count || 0;
-
-    const activeVehicles = getCount("active");
-    const idleVehicles = getCount("idle");
-    const offlineVehicles = getCount("offline");
+      if (diffInSeconds <= 2) {
+        activeVehicles += 1;
+      } else if (diffInSeconds <= 20) {
+        idleVehicles += 1;
+      } else {
+        offlineVehicles += 1;
+      }
+    });
 
     return res.json({
       ok: true,
       totalVehicles,
       activeVehicles,
       idleVehicles,
+      excessiveIdleVehicles,
       offlineVehicles,
     });
   } catch (err) {
