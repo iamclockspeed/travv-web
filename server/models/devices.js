@@ -24,6 +24,7 @@ const deviceSchema = new mongoose.Schema(
     },
     installedOn: { type: Date, default: Date.now },
     lastSeenAt: { type: Date },
+    structured: { type: mongoose.Schema.Types.Mixed, default: null },
     raw: { type: mongoose.Schema.Types.Mixed, default: null },
   },
   { timestamps: true }

@@ -10,7 +10,7 @@ import WifiOffIcon from "@mui/icons-material/WifiOff";
 import SpeedIcon from "@mui/icons-material/Speed";
 import WrongLocationIcon from "@mui/icons-material/WrongLocation";
 import CarCrashIcon from "@mui/icons-material/CarCrash";
-import HourglassTopIcon from "@mui/icons-material/HourglassTop";
+// import HourglassTopIcon from "@mui/icons-material/HourglassTop";
 import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 // import HandymanIcon from "@mui/icons-material/Handyman";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
@@ -21,7 +21,6 @@ interface TypeCounts {
   totalVehicles: number;
   activeVehicles: number;
   idleVehicles: number;
-  excessiveIdleVehicles: number;
   offlineVehicles: number;
 }
 
@@ -35,7 +34,6 @@ const Dashboard = () => {
       totalVehicles: 0,
       activeVehicles: 0,
       idleVehicles: 0,
-      excessiveIdleVehicles: 0,
       offlineVehicles: 0,
     },
   } = useQuery<TypeCounts>({
@@ -64,21 +62,21 @@ const Dashboard = () => {
 
               <DashCard
                 v1={stats.activeVehicles}
-                v2="Active Vahicles"
+                v2="Active Vehicles"
                 icon={<PlayCircleIcon fontSize="large" />}
                 onClick={() => navigate("/active-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={stats.idleVehicles}
-                v2="Idle Vahicles"
+                v2="Idle Vehicles"
                 icon={<AccessTimeFilledIcon fontSize="large" />}
                 onClick={() => navigate("/idle-vehicles")}
               ></DashCard>
 
               <DashCard
                 v1={stats.offlineVehicles}
-                v2="Offline Vahicles"
+                v2="Offline Vehicles"
                 icon={<WifiOffIcon fontSize="large" />}
                 onClick={() => navigate("/offline-vehicles")}
               ></DashCard>
@@ -120,12 +118,12 @@ const Dashboard = () => {
               </Typography>
             </Box>
             <Grid container spacing={2} mt={1}>
-              <DashCard
+              {/* <DashCard
                 v1={stats.excessiveIdleVehicles}
                 v2="Excessive Idling Alerts "
                 icon={<HourglassTopIcon fontSize="large" />}
                 onClick={() => navigate("/excessive-idle-vehicles")}
-              ></DashCard>
+              ></DashCard> */}
 
               <DashCard
                 v1={251}

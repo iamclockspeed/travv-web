@@ -9,6 +9,7 @@ import {
   TextInput,
   FilterForm,
   Pagination,
+  type ListBaseProps,
 } from "react-admin";
 import {
   Box,
@@ -21,7 +22,6 @@ import {
   Tab,
   Typography,
   IconButton,
-  Button,
   CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -42,6 +42,9 @@ interface Vehicle {
   device: {
     id: {
       lastSeenAt: string;
+      structured?: {
+        status?: string;
+      };
       raw: {
         state: {
           reported: {
@@ -129,22 +132,6 @@ const ALERT_MAP: Record<string, { icon: string; color: string }> = {
   "upcoming maintenance": { icon: "⚙️", color: "#c0392b" },
 };
 
-function getStatusAsText(lastSeenAt: string) {
-  const now = Date.now();
-
-  const diffInSeconds = (now - new Date(lastSeenAt).getTime()) / 1000;
-
-  if (diffInSeconds <= 2) {
-    return "active";
-  }
-
-  if (diffInSeconds <= 20) {
-    return "idle";
-  }
-
-  return "offline";
-}
-
 // --------------------------------------------
 // ✅ Filters Component
 // --------------------------------------------
@@ -182,14 +169,14 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   open,
   onClose,
   vehicle,
-  onAlertUpdate,
+  // onAlertUpdate,
 }) => {
   if (!vehicle) return null;
 
   const [tabIndex, setTabIndex] = useState(0);
-  const [alertHistory, setAlertHistory] = useState(
-    vehicle.alertHistory ? vehicle.alertHistory : []
-  );
+  // const [alertHistory, setAlertHistory] = useState(
+  //   vehicle.alertHistory ? vehicle.alertHistory : []
+  // );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -232,9 +219,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             </Typography>
             <Typography>
               Status:{" "}
-              <StatusWithIcon
-                status={getStatusAsText(vehicle.device.id.lastSeenAt)}
-              />
+              <StatusWithIcon status={vehicle.device.id?.structured?.status} />
             </Typography>
             <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               Location:
@@ -889,6 +874,7 @@ const VehicleTable: React.FC = () => {
           handleRowClick(id);
           return false;
         }}
+        empty={<div>No data found</div>}
       >
         <FunctionField
           label="Sl"
@@ -924,9 +910,7 @@ const VehicleTable: React.FC = () => {
         <FunctionField
           label="Status"
           render={(record) => (
-            <StatusWithIcon
-              status={getStatusAsText(record.device.id.lastSeenAt)}
-            />
+            <StatusWithIcon status={record.device.id?.structured?.status} />
           )}
         />
         <FunctionField label="Alerts" render={() => <AlertsWithBadges />} />
@@ -947,13 +931,8 @@ const VehicleTable: React.FC = () => {
 // --------------------------------------------
 // ✅ Final Component
 // --------------------------------------------
-type VehiclesTableProps = { resource: string };
-const VehiclesTableSimple: React.FC<VehiclesTableProps> = ({ resource }) => (
-  <ListBase
-    resource={resource}
-    perPage={10}
-    sort={{ field: "id", order: "DESC" }}
-  >
+const VehiclesTableSimple = (props: ListBaseProps) => (
+  <ListBase {...props} perPage={10} sort={{ field: "id", order: "DESC" }}>
     <Card>
       <CardContent>
         <Box>

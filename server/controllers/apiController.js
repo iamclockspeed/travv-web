@@ -155,24 +155,14 @@ exports.operatorDashboardStats = async (req, res) => {
     const totalVehicles = vehicles.length;
     let activeVehicles = 0;
     let idleVehicles = 0;
-    let excessiveIdleVehicles = 0;
     let offlineVehicles = 0;
 
     vehicles.forEach((vehicle) => {
-      const lastSeen = vehicle.device.id.lastSeenAt;
-      const now = Date.now();
-      const diffInSeconds = (now - new Date(lastSeen).getTime()) / 1000;
+      const status = vehicle.device.id.structured?.status ?? "";
 
-      if (
-        vehicle.device.id.raw.state.reported["251"] &&
-        vehicle.device.id.raw.state.reported["251"] == 1
-      ) {
-        excessiveIdleVehicles += 1;
-      }
-
-      if (diffInSeconds <= 2) {
+      if (status == "active") {
         activeVehicles += 1;
-      } else if (diffInSeconds <= 20) {
+      } else if (status == "idle") {
         idleVehicles += 1;
       } else {
         offlineVehicles += 1;
@@ -184,7 +174,6 @@ exports.operatorDashboardStats = async (req, res) => {
       totalVehicles,
       activeVehicles,
       idleVehicles,
-      excessiveIdleVehicles,
       offlineVehicles,
     });
   } catch (err) {
@@ -217,6 +206,8 @@ exports.getLocations = async (req, res) => {
 
 exports.totalVehicles = async (req, res) => {
   try {
+    const operatorId = req.user.id;
+
     const range = JSON.parse(req.query.range);
     const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
     const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
@@ -224,8 +215,11 @@ exports.totalVehicles = async (req, res) => {
     const sortField = sort[0];
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
-    const vehicles = await Vehicle.find(filter)
-      .populate("device.id")
+    const vehicles = await Vehicle.find({ "operator.id": operatorId })
+      .populate({
+        path: "device.id",
+        match: { ...filter },
+      })
       .populate("operator.id")
       .skip(range[0])
       .limit(range[1])
@@ -233,10 +227,12 @@ exports.totalVehicles = async (req, res) => {
 
     const total = await Vehicle.countDocuments();
 
-    const data = vehicles.map((op) => ({
-      id: op._id,
-      ...op.toObject(),
-    }));
+    const data = vehicles
+      .map((op) => ({
+        id: op._id,
+        ...op.toObject(),
+      }))
+      .filter((op) => op.device.id != null);
 
     res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");

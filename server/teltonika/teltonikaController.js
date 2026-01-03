@@ -14,11 +14,14 @@ class TeltonikaController {
 
         console.log(raw);
 
+        const structured = await this.calculations(deviceIMEI, payload);
+
         await Device.updateOne(
           { imei: deviceIMEI },
           {
             $set: {
               lastSeenAt: Date.now(),
+              structured: structured,
               raw: payload,
             },
           }
@@ -26,7 +29,10 @@ class TeltonikaController {
 
         await DeviceMessage.create({
           meta: meta,
-          body: payload,
+          body: {
+            structured: structured,
+            raw: payload,
+          },
         });
 
         console.log(`[Teltonika] Saved message from ${deviceIMEI}`);
@@ -43,6 +49,32 @@ class TeltonikaController {
     });
 
     tracker.start();
+  }
+  async calculations(deviceIMEI, payload) {
+    const prevState = await Device.findOne({ imei: deviceIMEI });
+    const structured = {};
+
+    // Device Status
+    structured.status = this.deviceStatusUpdate(prevState, structured);
+
+    return structured;
+  }
+
+  deviceStatusUpdate(prevState) {
+    const now = Date.now();
+
+    const diffInSeconds =
+      (now - new Date(prevState.lastSeenAt).getTime()) / 1000;
+
+    if (diffInSeconds <= 2) {
+      return "active";
+    }
+
+    if (diffInSeconds <= 20) {
+      return "idle";
+    }
+
+    return "offline";
   }
 }
 
