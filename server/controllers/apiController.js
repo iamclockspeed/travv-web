@@ -156,9 +156,16 @@ exports.operatorDashboardStats = async (req, res) => {
     let activeVehicles = 0;
     let idleVehicles = 0;
     let offlineVehicles = 0;
+    let crashDetected = 0;
+    let overspeeding = 0;
 
     vehicles.forEach((vehicle) => {
       const status = vehicle.device.id.structured?.status ?? "";
+      const crashReport =
+        vehicle.device.id.structured?.safety?.crashDetected ?? false;
+
+      const overspeedingReport =
+        vehicle.device.id.structured?.safety?.overspeeding ?? false;
 
       if (status == "active") {
         activeVehicles += 1;
@@ -166,6 +173,14 @@ exports.operatorDashboardStats = async (req, res) => {
         idleVehicles += 1;
       } else {
         offlineVehicles += 1;
+      }
+
+      if (crashReport) {
+        crashDetected += 1;
+      }
+
+      if (overspeedingReport) {
+        overspeeding += 1;
       }
     });
 
@@ -175,6 +190,8 @@ exports.operatorDashboardStats = async (req, res) => {
       activeVehicles,
       idleVehicles,
       offlineVehicles,
+      crashDetected,
+      overspeeding,
     });
   } catch (err) {
     console.error(err);
@@ -288,13 +305,12 @@ exports.countOperators = async (req, res) => {
   try {
     const total = await Operator.countDocuments();
     const active = await Operator.countDocuments({ status: "active" });
-    const debarred = await Operator.countDocuments({ status: "debarred" });
 
     return res.json({
       ok: true,
       total,
       active,
-      debarred,
+      debarred: total - active,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -464,18 +480,19 @@ exports.createVehicle = async (req, res) => {
   }
 };
 
-// This needs to be modified
 exports.countVehicles = async (req, res) => {
   try {
     const total = await Vehicle.countDocuments();
-    // const active = await Vehicle.countDocuments({ status: true });
-    // const offline = await Vehicle.countDocuments({ status: false });
+
+    const active = await Device.countDocuments({
+      "structured.status": "active",
+    });
 
     return res.json({
       ok: true,
       total,
-      active: total,
-      offline: 0,
+      active,
+      offline: total - active,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -673,7 +690,12 @@ exports.createDevice = async (req, res) => {
 
     await device.save();
 
-    const data = { id: device._id, ...device.toObject() };
+    const data = {
+      id: device._id,
+      ...device.toObject(),
+      lastSeenAt: Date.now(),
+      structured: { status: "offline" },
+    };
 
     return res.status(201).json(data);
   } catch (err) {
@@ -685,13 +707,12 @@ exports.countDevices = async (req, res) => {
   try {
     const total = await Device.countDocuments();
     const used = await Device.countDocuments({ alreadyInUse: true });
-    const unused = await Device.countDocuments({ alreadyInUse: false });
 
     return res.json({
       ok: true,
       total,
       used,
-      unused,
+      unused: total - used,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });

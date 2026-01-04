@@ -59,6 +59,7 @@ class TeltonikaServer extends EventEmitter {
       socket.on("close", () => {
         console.log(`[Teltonika] Disconnected ${remote}`);
         if (socket.deviceIMEI) {
+          this.emit("disconnected", { deviceIMEI: socket.deviceIMEI });
           this.approvedDevicesList.delete(socket.deviceIMEI);
         }
       });

@@ -87,13 +87,13 @@ const Dashboard = () => {
 
               <DashCard
                 v1={veCounts.active}
-                v2="Active Vahicles"
+                v2="Active Vehicles"
                 icon={<PlayCircleIcon fontSize="large" />}
               ></DashCard>
 
               <DashCard
                 v1={veCounts.offline}
-                v2="Offline Vahicles"
+                v2="Offline Vehicles"
                 icon={<WifiOffIcon fontSize="large" />}
               ></DashCard>
             </Grid>

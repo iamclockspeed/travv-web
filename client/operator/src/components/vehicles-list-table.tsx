@@ -45,10 +45,10 @@ interface Vehicle {
       structured?: {
         status?: string;
       };
-      raw: {
-        state: {
-          reported: {
-            latlng: string;
+      raw?: {
+        state?: {
+          reported?: {
+            latlng?: string;
           };
         };
       };
@@ -226,7 +226,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               <IconButton size="large" title="View on Map" sx={{ p: 0.5 }}>
                 <MapIcon fontSize="medium" />
               </IconButton>
-              {vehicle.device.id.raw.state.reported.latlng}
+              {vehicle.device.id.raw?.state?.reported?.latlng ??
+                "0.000000,0.000000"}
             </Typography>
             {vehicle.images.length > 0 && (
               <Box sx={{ pb: 3 }}>
@@ -663,24 +664,31 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
           </Typography>
 
           <Box display="flex" flexDirection="column" gap={1.5}>
-            {vehicle.documents.map((item) => (
-              <Box
-                sx={{
-                  backgroundColor: "#f4f4f4",
-                  borderLeft: `4px solid #2980b9`,
-                  p: 1.5,
-                  borderRadius: 1,
-                  boxShadow: 1,
-                }}
-              >
-                <Typography sx={{ fontWeight: 500 }}>
-                  {item.type} Number: {item.number}
-                </Typography>
-                <Typography variant="body2">
-                  Expiry Date: {new Date(item.expiryDate).toLocaleDateString()}
-                </Typography>
-              </Box>
-            ))}
+            {vehicle.documents.length > 0 ? (
+              vehicle.documents.map((item) => (
+                <Box
+                  sx={{
+                    backgroundColor: "#f4f4f4",
+                    borderLeft: `4px solid #2980b9`,
+                    p: 1.5,
+                    borderRadius: 1,
+                    boxShadow: 1,
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 500 }}>
+                    {item.type} Number: {item.number}
+                  </Typography>
+                  <Typography variant="body2">
+                    Expiry Date:{" "}
+                    {new Date(item.expiryDate).toLocaleDateString()}
+                  </Typography>
+                </Box>
+              ))
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No Data Provided
+              </Typography>
+            )}
           </Box>
 
           {/* 🔗 Optional Links (With Placeholder) */}
@@ -690,36 +698,47 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             </Typography>
 
             <Box display="flex" flexDirection="column" gap={1}>
-              {vehicle.documents.map((doc, i) => (
-                <Box
-                  key={i}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    backgroundColor: "#f4f4f4",
-                    p: 1,
-                    borderRadius: 1,
-                    boxShadow: 1,
-                  }}
-                >
-                  <Typography sx={{ fontWeight: 500 }}>{doc.type}:</Typography>
-                  {doc.url ? (
-                    <a
-                      href={import.meta.env.VITE_BACKEND_HOST + doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: "#2980b9", textDecoration: "underline" }}
-                    >
-                      View Document
-                    </a>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No File Uploaded
+              {vehicle.documents.length > 0 ? (
+                vehicle.documents.map((doc, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      backgroundColor: "#f4f4f4",
+                      p: 1,
+                      borderRadius: 1,
+                      boxShadow: 1,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 500 }}>
+                      {doc.type}:
                     </Typography>
-                  )}
-                </Box>
-              ))}
+                    {doc.url ? (
+                      <a
+                        href={import.meta.env.VITE_BACKEND_HOST + doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#2980b9",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        View Document
+                      </a>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No File Uploaded
+                      </Typography>
+                    )}
+                  </Box>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  No Documents Uploaded
+                </Typography>
+              )}
             </Box>
           </Box>
         </TabPanel>
@@ -828,7 +847,9 @@ const LocationWithLink = () => {
       <IconButton title="View on Map">
         <MapIcon />
       </IconButton>
-      <span>{record.device.id.raw.state.reported.latlng}</span>
+      <span>
+        {record.device.id.raw?.state?.reported?.latlng ?? "0.000000,0.000000"}
+      </span>
     </Box>
   ) : null;
 };

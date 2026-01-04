@@ -48,32 +48,53 @@ class TeltonikaController {
       );
     });
 
+    tracker.on("disconnected", async ({ deviceIMEI }) => {
+      const prevState = await Device.findOne({ imei: deviceIMEI });
+
+      const status = this.deviceStatusUpdate(prevState);
+
+      await Device.updateOne(
+        { imei: deviceIMEI },
+        {
+          $set: {
+            lastSeenAt: Date.now(),
+            "structured.status": status,
+          },
+        }
+      );
+    });
+
     tracker.start();
   }
   async calculations(deviceIMEI, payload) {
     const prevState = await Device.findOne({ imei: deviceIMEI });
-    const structured = {};
+    const structured = prevState?.structured ?? {};
+    structured.safety ||= {};
 
     // Device Status
     structured.status = this.deviceStatusUpdate(prevState, structured);
+
+    if (payload.state.reported["247"]) {
+      structured.safety.crashDetected = true;
+    }
+
+    if (payload.state.reported["255"]) {
+      structured.safety.overspeeding = true;
+    }
 
     return structured;
   }
 
   deviceStatusUpdate(prevState) {
     const now = Date.now();
-
     const diffInSeconds =
       (now - new Date(prevState.lastSeenAt).getTime()) / 1000;
-
     if (diffInSeconds <= 2) {
       return "active";
     }
-
     if (diffInSeconds <= 20) {
       return "idle";
     }
-
     return "offline";
   }
 }

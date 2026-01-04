@@ -22,6 +22,8 @@ interface TypeCounts {
   activeVehicles: number;
   idleVehicles: number;
   offlineVehicles: number;
+  crashDetected: number;
+  overspeeding: number;
 }
 
 const Dashboard = () => {
@@ -35,6 +37,8 @@ const Dashboard = () => {
       activeVehicles: 0,
       idleVehicles: 0,
       offlineVehicles: 0,
+      crashDetected: 0,
+      overspeeding: 0,
     },
   } = useQuery<TypeCounts>({
     queryKey: ["dashStats"],
@@ -89,7 +93,7 @@ const Dashboard = () => {
             </Box>
             <Grid container spacing={2} mt={1}>
               <DashCard
-                v1={23}
+                v1={stats.overspeeding}
                 v2="Over-Speeding Vehicles"
                 icon={<SpeedIcon fontSize="large" />}
                 onClick={() => navigate("/over-speeding-vehicles")}
@@ -103,7 +107,7 @@ const Dashboard = () => {
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={stats.crashDetected}
                 v2="Crash Detections"
                 icon={<CarCrashIcon fontSize="large" />}
                 onClick={() => navigate("/crash-detected-vehicles")}
