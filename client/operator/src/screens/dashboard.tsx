@@ -24,6 +24,7 @@ interface TypeCounts {
   offlineVehicles: number;
   crashDetected: number;
   overspeeding: number;
+  violategeofence: number;
 }
 
 const Dashboard = () => {
@@ -39,6 +40,7 @@ const Dashboard = () => {
       offlineVehicles: 0,
       crashDetected: 0,
       overspeeding: 0,
+      violategeofence: 0,
     },
   } = useQuery<TypeCounts>({
     queryKey: ["dashStats"],
@@ -100,7 +102,7 @@ const Dashboard = () => {
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={stats.violategeofence}
                 v2="Geo-Fence Violations"
                 icon={<WrongLocationIcon fontSize="large" />}
                 onClick={() => navigate("/geo-fence-violating-vehicles")}

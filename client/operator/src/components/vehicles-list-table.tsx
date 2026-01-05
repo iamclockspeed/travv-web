@@ -41,9 +41,12 @@ interface Vehicle {
   fuelType: string;
   device: {
     id: {
-      lastSeenAt: string;
+      lastSeenAt?: string;
       structured?: {
         status?: string;
+        safety?: {
+          alerts?: VehicleAlert[];
+        };
       };
       raw?: {
         state?: {
@@ -54,7 +57,6 @@ interface Vehicle {
       };
     };
   };
-  alertHistory: VehicleAlert[];
   fuelLogs: FuelLog[];
   trips: Trip[];
   maintenanceLogs: MaintenanceLog[];
@@ -797,7 +799,10 @@ const StatusWithIcon = ({ status }: { status?: string }) => {
 
 const AlertsWithBadges = () => {
   const record = useRecordContext<Vehicle>();
-  const alerts = record?.alertHistory?.filter((a) => a?.unhandled) || [];
+  const alerts =
+    record?.device?.id?.structured?.safety?.alerts?.filter(
+      (a) => a?.unhandled
+    ) || [];
   const MAX_VISIBLE_ALERTS = 2;
 
   return (
@@ -873,7 +878,11 @@ const VehicleTable: React.FC = () => {
     updatedAlerts: VehicleAlert[]
   ) => {
     if (selectedVehicle?.id === vehicleId) {
-      setSelectedVehicle({ ...selectedVehicle, alertHistory: updatedAlerts });
+      selectedVehicle.device.id.structured ??= {};
+      selectedVehicle.device.id.structured.safety ??= {};
+      selectedVehicle.device.id.structured.safety.alerts = updatedAlerts;
+
+      setSelectedVehicle({ ...selectedVehicle });
     }
   };
 

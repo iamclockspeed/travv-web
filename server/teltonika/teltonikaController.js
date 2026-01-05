@@ -70,17 +70,40 @@ class TeltonikaController {
     const prevState = await Device.findOne({ imei: deviceIMEI });
     const structured = prevState?.structured ?? {};
     structured.safety ||= {};
+    structured.safety.alerts ||= [];
 
     // Device Status
     structured.status = this.deviceStatusUpdate(prevState, structured);
 
+    const alertsMap = new Map(
+      (structured.safety.alerts || []).map((a) => [a.type, a])
+    );
+
+    // Crash
     if (payload.state.reported["247"]) {
       structured.safety.crashDetected = true;
+      alertsMap.set("crash detected", {
+        type: "crash detected",
+        unhandled: true,
+      });
+    } else {
+      structured.safety.crashDetected = false;
+      alertsMap.delete("crash detected");
     }
 
+    // Overspeed
     if (payload.state.reported["255"]) {
       structured.safety.overspeeding = true;
+      alertsMap.set("over speeding", {
+        type: "over speeding",
+        unhandled: true,
+      });
+    } else {
+      structured.safety.overspeeding = false;
+      alertsMap.delete("over speeding");
     }
+
+    structured.safety.alerts = [...alertsMap.values()];
 
     return structured;
   }

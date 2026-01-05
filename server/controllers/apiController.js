@@ -158,6 +158,7 @@ exports.operatorDashboardStats = async (req, res) => {
     let offlineVehicles = 0;
     let crashDetected = 0;
     let overspeeding = 0;
+    let violategeofence = 0;
 
     vehicles.forEach((vehicle) => {
       const status = vehicle.device.id.structured?.status ?? "";
@@ -166,6 +167,9 @@ exports.operatorDashboardStats = async (req, res) => {
 
       const overspeedingReport =
         vehicle.device.id.structured?.safety?.overspeeding ?? false;
+
+      const violategeofenceReport =
+        vehicle.device.id.structured?.safety?.violategeofence ?? false;
 
       if (status == "active") {
         activeVehicles += 1;
@@ -182,6 +186,10 @@ exports.operatorDashboardStats = async (req, res) => {
       if (overspeedingReport) {
         overspeeding += 1;
       }
+
+      if (violategeofenceReport) {
+        violategeofence += 1;
+      }
     });
 
     return res.json({
@@ -192,6 +200,7 @@ exports.operatorDashboardStats = async (req, res) => {
       offlineVehicles,
       crashDetected,
       overspeeding,
+      violategeofence,
     });
   } catch (err) {
     console.error(err);
@@ -201,7 +210,7 @@ exports.operatorDashboardStats = async (req, res) => {
 
 exports.getLocations = async (req, res) => {
   try {
-    const device = await Device.find({ imei: "353691840096712" });
+    const device = await Device.find({ imei: "353691842147323" });
 
     const latlng = device[0].raw.state.reported.latlng;
 
