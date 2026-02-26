@@ -59,7 +59,6 @@ class TeltonikaServer extends EventEmitter {
       socket.on("close", () => {
         console.log(`[Teltonika] Disconnected ${remote}`);
         if (socket.deviceIMEI) {
-          this.emit("disconnected", { deviceIMEI: socket.deviceIMEI });
           this.approvedDevicesList.delete(socket.deviceIMEI);
         }
       });
@@ -67,7 +66,7 @@ class TeltonikaServer extends EventEmitter {
       socket.on("error", (err) => {
         console.error(
           `[Teltonika] socket error ${remote}:`,
-          err.message || err
+          err.message || err,
         );
       });
     });
@@ -78,7 +77,7 @@ class TeltonikaServer extends EventEmitter {
 
     this.server.listen(this.port, this.host, () => {
       console.log(
-        `[Teltonika] TCP server listening on ${this.host}:${this.port}`
+        `[Teltonika] TCP server listening on ${this.host}:${this.port}`,
       );
     });
   }
@@ -90,7 +89,7 @@ class TeltonikaServer extends EventEmitter {
     } catch (err) {
       console.warn(
         "[Teltonika] JSON parse failed (string). Buffering as raw:",
-        err.message
+        err.message,
       );
       this.emit("raw", { raw: str, socket });
     }
@@ -103,7 +102,7 @@ class TeltonikaServer extends EventEmitter {
       deviceIMEI: socket.deviceIMEI,
       receiveTime: new Date(),
     };
-    this.emit("message", { meta, payload: obj, raw: JSON.stringify(obj) });
+    this.emit("message", { meta, payload: obj });
   }
 
   stop(callback) {

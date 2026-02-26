@@ -6,34 +6,29 @@ class TeltonikaController {
     this.isDBConnected = options.isDBConnected;
   }
   attachTracker(tracker) {
-    tracker.on("message", async ({ meta, payload, raw }) => {
+    tracker.on("message", async ({ meta, payload }) => {
       try {
-        const deviceIMEI = meta.deviceIMEI;
-
         if (!this.isDBConnected()) return;
 
-        console.log(raw);
+        const deviceIMEI = meta.deviceIMEI;
+        const ts = payload?.state?.reported?.ts;
 
-        const structured = await this.calculations(deviceIMEI, payload);
+        if (!this.isRealtimePacket(ts)) {
+          console.warn(
+            `[Teltonika] REJECTED payload | IMEI=${deviceIMEI} | ts=${ts} | age=${Math.round(
+              (Date.now() - ts) / 1000,
+            )}s | data: ${JSON.stringify(payload)}`,
+          );
+          return;
+        } else {
+          console.log(
+            `[Teltonika] ACCEPTED payload | IMEI=${deviceIMEI} | ts=${ts} | age=${Math.round(
+              (Date.now() - ts) / 1000,
+            )}s | data: ${JSON.stringify(payload)}`,
+          );
+        }
 
-        await Device.updateOne(
-          { imei: deviceIMEI },
-          {
-            $set: {
-              lastSeenAt: Date.now(),
-              structured: structured,
-              raw: payload,
-            },
-          }
-        );
-
-        await DeviceMessage.create({
-          meta: meta,
-          body: {
-            structured: structured,
-            raw: payload,
-          },
-        });
+        await this.updateAndStoreData(ts, meta, payload);
 
         console.log(`[Teltonika] Saved message from ${deviceIMEI}`);
       } catch (err) {
@@ -44,39 +39,47 @@ class TeltonikaController {
     tracker.on("raw", ({ raw, socket }) => {
       console.warn(
         "[Teltonika] raw data received (could not parse to JSON):",
-        raw
-      );
-    });
-
-    tracker.on("disconnected", async ({ deviceIMEI }) => {
-      const prevState = await Device.findOne({ imei: deviceIMEI });
-
-      const status = this.deviceStatusUpdate(prevState);
-
-      await Device.updateOne(
-        { imei: deviceIMEI },
-        {
-          $set: {
-            lastSeenAt: Date.now(),
-            "structured.status": status,
-          },
-        }
+        raw,
       );
     });
 
     tracker.start();
   }
-  async calculations(deviceIMEI, payload) {
-    const prevState = await Device.findOne({ imei: deviceIMEI });
+
+  async updateAndStoreData(ts, meta, payload) {
+    const structured = await this.calculations(meta, payload);
+
+    await Device.updateOne(
+      { imei: meta.deviceIMEI },
+      {
+        $set: {
+          lastSeenAt: ts,
+          structured: structured,
+          raw: payload,
+        },
+      },
+    );
+
+    await DeviceMessage.create({
+      meta: meta,
+      body: {
+        structured: structured,
+        raw: payload,
+      },
+    });
+  }
+
+  async calculations(meta, payload) {
+    const prevState = await Device.findOne({ imei: meta.deviceIMEI });
     const structured = prevState?.structured ?? {};
     structured.safety ||= {};
     structured.safety.alerts ||= [];
 
     // Device Status
-    structured.status = this.deviceStatusUpdate(prevState, structured);
+    structured.status = this.deviceStatusUpdate(prevState);
 
     const alertsMap = new Map(
-      (structured.safety.alerts || []).map((a) => [a.type, a])
+      (structured.safety.alerts || []).map((a) => [a.type, a]),
     );
 
     // Crash
@@ -112,13 +115,16 @@ class TeltonikaController {
     const now = Date.now();
     const diffInSeconds =
       (now - new Date(prevState.lastSeenAt).getTime()) / 1000;
-    if (diffInSeconds <= 2) {
-      return "active";
-    }
-    if (diffInSeconds <= 20) {
-      return "idle";
-    }
+    if (diffInSeconds <= 5) return "active";
+    if (diffInSeconds <= 20) return "idle";
     return "offline";
+  }
+
+  isRealtimePacket(ts, windowSeconds = 5) {
+    if (!ts) return false;
+    const now = Date.now();
+    const diffSeconds = Math.abs(now - ts) / 1000;
+    return diffSeconds <= windowSeconds;
   }
 }
 
