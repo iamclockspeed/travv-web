@@ -68,7 +68,7 @@ interface Vehicle {
     {
       url: string;
       description: string;
-    }
+    },
   ];
 }
 
@@ -145,9 +145,9 @@ const VehicleFilters = () => {
         filters={[
           <TextInput
             label="Vehicle Number / Model"
-            source="v"
+            source="vehicle"
             alwaysOn
-            key="v"
+            key="vehicle"
           />,
         ]}
         {...filterContext}
@@ -801,7 +801,7 @@ const AlertsWithBadges = () => {
   const record = useRecordContext<Vehicle>();
   const alerts =
     record?.device?.id?.structured?.safety?.alerts?.filter(
-      (a) => a?.unhandled
+      (a) => a?.unhandled,
     ) || [];
   const MAX_VISIBLE_ALERTS = 2;
 
@@ -875,7 +875,7 @@ const VehicleTable: React.FC = () => {
 
   const handleAlertUpdate = (
     vehicleId: number,
-    updatedAlerts: VehicleAlert[]
+    updatedAlerts: VehicleAlert[],
   ) => {
     if (selectedVehicle?.id === vehicleId) {
       selectedVehicle.device.id.structured ??= {};

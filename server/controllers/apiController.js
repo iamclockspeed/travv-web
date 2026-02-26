@@ -66,7 +66,7 @@ exports.operatorLogin = async (req, res) => {
 exports.getOperatorUserInfo = async (req, res) => {
   try {
     const operator = await Operator.findById(req.user.id).select(
-      "profileName email phone"
+      "profileName email phone",
     );
 
     if (!operator) {
@@ -149,7 +149,7 @@ exports.operatorDashboardStats = async (req, res) => {
     const operatorId = req.user.id;
 
     const vehicles = await Vehicle.find({ "operator.id": operatorId }).populate(
-      "device.id"
+      "device.id",
     );
 
     const totalVehicles = vehicles.length;
@@ -238,13 +238,43 @@ exports.totalVehicles = async (req, res) => {
     const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
     const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
 
+    const vehicleFilter = {};
+    const structuredFilter = {};
+    const otherFilter = {};
+
+    for (const [key, value] of Object.entries(filter)) {
+      console.log(key);
+
+      if (key === "vehicle") {
+        vehicleFilter[key] = value;
+      } else if (key.toLowerCase().includes("structured")) {
+        structuredFilter[key] = value;
+      } else {
+        otherFilter[key] = value;
+      }
+    }
+
+    const queryFilter = {
+      "operator.id": operatorId,
+    };
+
+    const search = vehicleFilter?.vehicle?.trim();
+
+    if (search) {
+      queryFilter.$or = [
+        { registrationNumber: { $regex: search, $options: "i" } },
+        { make: { $regex: search, $options: "i" } },
+        { model: { $regex: search, $options: "i" } },
+      ];
+    }
+
     const sortField = sort[0];
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
-    const vehicles = await Vehicle.find({ "operator.id": operatorId })
+    const vehicles = await Vehicle.find(queryFilter)
       .populate({
         path: "device.id",
-        match: { ...filter },
+        match: { ...structuredFilter },
       })
       .populate("operator.id")
       .skip(range[0])
@@ -349,7 +379,7 @@ exports.listOperators = async (req, res) => {
 
     res.setHeader(
       "Content-Range",
-      `operators ${range[0]}-${range[1]}/${total}`
+      `operators ${range[0]}-${range[1]}/${total}`,
     );
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
@@ -404,7 +434,7 @@ exports.deleteOperator = async (req, res) => {
 
 const operatorsComdocsDir = path.join(
   __dirname,
-  "../uploads/operators/comdocs"
+  "../uploads/operators/comdocs",
 );
 if (!fs.existsSync(operatorsComdocsDir)) {
   fs.mkdirSync(operatorsComdocsDir, { recursive: true });
@@ -822,7 +852,7 @@ exports.listFeedbacks = async (req, res) => {
 
     res.setHeader(
       "Content-Range",
-      `feedbacks ${range[0]}-${range[1]}/${total}`
+      `feedbacks ${range[0]}-${range[1]}/${total}`,
     );
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
