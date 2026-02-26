@@ -11,7 +11,7 @@ class TeltonikaServer extends EventEmitter {
       options.port || parseInt(process.env.TELTONIKA_PORT, 10) || 5055;
     this.host = options.host || "0.0.0.0";
     this.server = null;
-    this.approvedDevicesList = new Set();
+    this.approvedDevices = new Map();
   }
 
   start() {
@@ -25,41 +25,51 @@ class TeltonikaServer extends EventEmitter {
         if (buffer.length === 17 && buffer[1] === 15) {
           const deviceIMEI = buffer.subarray(2, 17).toString("utf-8");
 
-          if (this.isDBConnected()) {
-            if (this.approvedDevicesList.has(deviceIMEI)) {
-              console.log("Device already approved");
-              socket.deviceIMEI = deviceIMEI;
-              socket.write(Buffer.from([0x01]));
-            } else {
-              try {
-                const device = await Device.findOne({ imei: deviceIMEI });
-                if (device) {
-                  console.log("IMEI found in DB:", deviceIMEI);
-                  console.log("Approving Device:", deviceIMEI);
-                  this.approvedDevicesList.add(deviceIMEI);
-                  socket.deviceIMEI = deviceIMEI;
-                  socket.write(Buffer.from([0x01]));
-                } else {
-                  console.log("IMEI NOT found in DB");
-                  console.log("Rejecting Connection");
-                  socket.write(Buffer.from([0x00]));
-                }
-              } catch (err) {
-                console.error("DB Error:", err);
-              }
+          if (this.isDBConnected()) return;
+
+          if (this.approvedDevices.has(deviceIMEI)) {
+            socket.deviceIMEI = deviceIMEI;
+            socket.write(Buffer.from([0x01]));
+            return;
+          }
+
+          try {
+            const device = await Device.findOne({ imei: deviceIMEI });
+
+            if (!device) {
+              console.log("IMEI Not found in DB:", deviceIMEI);
+              socket.write(Buffer.from([0x00]));
+              return;
             }
+
+            console.log("Approving device:", deviceIMEI);
+
+            socket.deviceIMEI = deviceIMEI;
+
+            this.approvedDevices.set(deviceIMEI, {
+              socket,
+              lastSeen: new Date(),
+            });
+
+            socket.write(Buffer.from([0x01]));
+          } catch (err) {
+            console.error("DB error:", err);
+            socket.write(Buffer.from([0x00]));
           }
-        } else {
-          if (socket.deviceIMEI) {
-            this._handleJsonString(buffer.toString("utf-8"), socket);
-          }
+
+          return;
+        }
+
+        if (socket.deviceIMEI) {
+          this._handleJsonString(buffer.toString("utf-8"), socket);
         }
       });
 
       socket.on("close", () => {
         console.log(`[Teltonika] Disconnected ${remote}`);
         if (socket.deviceIMEI) {
-          this.approvedDevicesList.delete(socket.deviceIMEI);
+          this.approvedDevices.delete(socket.deviceIMEI);
+          this.onDisconnection(socket);
         }
       });
 
@@ -103,6 +113,16 @@ class TeltonikaServer extends EventEmitter {
       receiveTime: new Date(),
     };
     this.emit("message", { meta, payload: obj });
+  }
+
+  onDisconnection(socket) {
+    const meta = {
+      remoteAddress: socket.remoteAddress,
+      remotePort: socket.remotePort,
+      deviceIMEI: socket.deviceIMEI,
+      receiveTime: new Date(),
+    };
+    this.emit("disconnection", { meta });
   }
 
   stop(callback) {
