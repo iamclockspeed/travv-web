@@ -11,10 +11,10 @@ import SpeedIcon from "@mui/icons-material/Speed";
 import WrongLocationIcon from "@mui/icons-material/WrongLocation";
 import CarCrashIcon from "@mui/icons-material/CarCrash";
 // import HourglassTopIcon from "@mui/icons-material/HourglassTop";
-import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+// import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 // import HandymanIcon from "@mui/icons-material/Handyman";
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
-import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
+// import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+// import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
 // import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 
 interface TypeCounts {
@@ -117,19 +117,19 @@ const Dashboard = () => {
             </Grid>
           </Box>
 
-          <Box>
+          {/* <Box>
             <Box>
               <Typography variant="h6">
                 🟨 Vehicle Behavior & Performance
               </Typography>
             </Box>
             <Grid container spacing={2} mt={1}>
-              {/* <DashCard
+              <DashCard
                 v1={stats.excessiveIdleVehicles}
                 v2="Excessive Idling Alerts "
                 icon={<HourglassTopIcon fontSize="large" />}
                 onClick={() => navigate("/excessive-idle-vehicles")}
-              ></DashCard> */}
+              ></DashCard>
 
               <DashCard
                 v1={251}
@@ -138,21 +138,21 @@ const Dashboard = () => {
                 onClick={() => navigate("/low-fuel-vehicles")}
               ></DashCard>
             </Grid>
-          </Box>
+          </Box> */}
 
-          <Box>
+          {/* <Box>
             <Box>
               <Typography variant="h6">
                 🟥 System Health & Maintenance
               </Typography>
             </Box>
             <Grid container spacing={2} mt={1}>
-              {/* <DashCard
+              <DashCard
                 v1={251}
                 v2="Engine Breakdown Alerts"
                 icon={<HandymanIcon fontSize="large" />}
                 onClick={() => navigate("/engine-breakdown-vehicles")}
-              ></DashCard> */}
+              ></DashCard>
 
               <DashCard
                 v1={251}
@@ -168,14 +168,14 @@ const Dashboard = () => {
                 onClick={() => navigate("/low-battery-vehicles")}
               ></DashCard>
 
-              {/* <DashCard
+              <DashCard
                 v1={251}
                 v2="Upcoming Maintenance"
                 icon={<SettingsSuggestIcon fontSize="large" />}
                 onClick={() => navigate("/upcomming-maintenance-vehicles")}
-              ></DashCard> */}
+              ></DashCard>
             </Grid>
-          </Box>
+          </Box> */}
         </Box>
       </CardContent>
     </Card>

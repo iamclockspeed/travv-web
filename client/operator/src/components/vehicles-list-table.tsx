@@ -10,6 +10,7 @@ import {
   FilterForm,
   Pagination,
   type ListBaseProps,
+  Button,
 } from "react-admin";
 import {
   Box,
@@ -171,14 +172,16 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   open,
   onClose,
   vehicle,
-  // onAlertUpdate,
+  onAlertUpdate,
 }) => {
   if (!vehicle) return null;
 
   const [tabIndex, setTabIndex] = useState(0);
-  // const [alertHistory, setAlertHistory] = useState(
-  //   vehicle.alertHistory ? vehicle.alertHistory : []
-  // );
+  const [alertHistory, setAlertHistory] = useState(
+    vehicle.device.id.structured?.safety?.alerts
+      ? vehicle.device.id.structured.safety.alerts
+      : [],
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -200,7 +203,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
         >
           <Tab label="Basic Details" />
           <Tab label="Trips" />
-          <Tab label="Fuel Logs" />
+          {/* <Tab label="Fuel Logs" /> */}
           <Tab label="Alert History" />
           {/* <Tab label="Maintenance Logs" /> */}
           <Tab label="Documents" />
@@ -450,7 +453,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
         </TabPanel> */}
 
         {/* Alert History */}
-        {/* <TabPanel value={tabIndex} index={3}>
+        <TabPanel value={tabIndex} index={2}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             🚨 Alert Summary (Last 30 Days)
           </Typography>
@@ -473,7 +476,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               color="primary"
               onClick={() => {
                 const updated = alertHistory.map((a) =>
-                  a.unhandled ? { ...a, unhandled: false } : a
+                  a.unhandled ? { ...a, unhandled: false } : a,
                 );
                 setAlertHistory(updated);
                 onAlertUpdate?.(vehicle.id, updated);
@@ -588,7 +591,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               ✅ No Alerts
             </Box>
           )}
-        </TabPanel> */}
+        </TabPanel>
 
         {/* Maintenance Logs */}
         {/* <TabPanel value={tabIndex} index={4}>
@@ -660,7 +663,7 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
         </TabPanel> */}
 
         {/* Documents */}
-        <TabPanel value={tabIndex} index={4}>
+        <TabPanel value={tabIndex} index={3}>
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             📄 Vehicle Documents
           </Typography>
