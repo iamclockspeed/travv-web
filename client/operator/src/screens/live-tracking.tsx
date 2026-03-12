@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+
 import {
   MapContainer,
   TileLayer,
@@ -13,6 +14,7 @@ import {
   Polyline,
   useMap,
 } from "react-leaflet";
+
 import L, { type LatLngTuple } from "leaflet";
 
 import { useParams } from "react-router-dom";
@@ -34,6 +36,11 @@ import {
 
 import logo from "../assets/logo.png";
 import route_map_img from "../assets/route-maps.png";
+
+import {
+  buildCumulativeKm,
+  getDistanceCovered,
+} from "../components/routeProjection";
 
 // ─── Leaflet icon fix ────────────────────────────────────────────────────────
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)
@@ -58,6 +65,8 @@ interface RoutePoint {
   desc: string;
   station: boolean;
   coordinates: Coordinates;
+  segment_km?: number;
+  cumulative_km?: number;
 }
 
 interface LiveLocationRecord {
@@ -69,6 +78,26 @@ interface LiveLocationRecord {
   heading?: number;
 }
 
+function haversineDistance(a: Coordinates, b: Coordinates): number {
+  const R = 6371; // km
+
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+
+  const d = 2 * R * Math.asin(Math.sqrt(h));
+
+  return d;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS = 2000;
 const MAX_TRAIL_POINTS = 500;
@@ -77,266 +106,427 @@ const MAX_TRAIL_POINTS = 500;
 const ROUTE_DATA: RoutePoint[] = [
   {
     index: 0,
-    name: "GVVQ+2W6, Remed - Hirakud Dam Rd, Hirakud, Odisha 768016, India",
+    name: "Durgamandir Chowk",
     desc: "",
     station: true,
-    coordinates: { longitude: 83.8891, latitude: 21.54244, altitude: 0 },
+    coordinates: {
+      longitude: 83.8891,
+      latitude: 21.54244,
+      altitude: 0.0,
+    },
+    segment_km: 0.0,
+    cumulative_km: 0.0,
   },
   {
     index: 1,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88962, latitude: 21.54245, altitude: 0 },
+    coordinates: {
+      longitude: 83.88962,
+      latitude: 21.54245,
+      altitude: 0.0,
+    },
   },
   {
     index: 2,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88971, latitude: 21.54243, altitude: 0 },
+    coordinates: {
+      longitude: 83.88971,
+      latitude: 21.54243,
+      altitude: 0.0,
+    },
   },
   {
     index: 3,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88978, latitude: 21.54242, altitude: 0 },
+    coordinates: {
+      longitude: 83.88978,
+      latitude: 21.54242,
+      altitude: 0.0,
+    },
   },
   {
     index: 4,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88979, latitude: 21.54242, altitude: 0 },
+    coordinates: {
+      longitude: 83.88979,
+      latitude: 21.54242,
+      altitude: 0.0,
+    },
   },
   {
     index: 5,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88986, latitude: 21.54237, altitude: 0 },
+    coordinates: {
+      longitude: 83.88986,
+      latitude: 21.54237,
+      altitude: 0.0,
+    },
   },
   {
     index: 6,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.8902, latitude: 21.54207, altitude: 0 },
+    coordinates: {
+      longitude: 83.8902,
+      latitude: 21.54207,
+      altitude: 0.0,
+    },
   },
   {
     index: 7,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89046, latitude: 21.54182, altitude: 0 },
+    coordinates: {
+      longitude: 83.89046,
+      latitude: 21.54182,
+      altitude: 0.0,
+    },
   },
   {
     index: 8,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.8905, latitude: 21.54177, altitude: 0 },
+    coordinates: {
+      longitude: 83.8905,
+      latitude: 21.54177,
+      altitude: 0.0,
+    },
   },
   {
     index: 9,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89051, latitude: 21.54175, altitude: 0 },
+    coordinates: {
+      longitude: 83.89051,
+      latitude: 21.54175,
+      altitude: 0.0,
+    },
   },
   {
     index: 10,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89054, latitude: 21.54171, altitude: 0 },
+    coordinates: {
+      longitude: 83.89054,
+      latitude: 21.54171,
+      altitude: 0.0,
+    },
   },
   {
     index: 11,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89055, latitude: 21.54167, altitude: 0 },
+    coordinates: {
+      longitude: 83.89055,
+      latitude: 21.54167,
+      altitude: 0.0,
+    },
   },
   {
     index: 12,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89055, latitude: 21.54164, altitude: 0 },
+    coordinates: {
+      longitude: 83.89055,
+      latitude: 21.54164,
+      altitude: 0.0,
+    },
   },
   {
     index: 13,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89055, latitude: 21.54162, altitude: 0 },
+    coordinates: {
+      longitude: 83.89055,
+      latitude: 21.54162,
+      altitude: 0.0,
+    },
   },
   {
     index: 14,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89053, latitude: 21.54154, altitude: 0 },
+    coordinates: {
+      longitude: 83.89053,
+      latitude: 21.54154,
+      altitude: 0.0,
+    },
   },
   {
     index: 15,
-    name: "GVRR+JC6, Hirakud, Odisha 768016, India",
+    name: "Saktimandir",
     desc: "",
     station: true,
-    coordinates: { longitude: 83.8905, latitude: 21.54149, altitude: 0 },
+    coordinates: {
+      longitude: 83.8905,
+      latitude: 21.54149,
+      altitude: 0.0,
+    },
+    segment_km: 0.2084,
+    cumulative_km: 0.2084,
   },
   {
     index: 16,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89023, latitude: 21.541, altitude: 0 },
+    coordinates: {
+      longitude: 83.89023,
+      latitude: 21.541,
+      altitude: 0.0,
+    },
   },
   {
     index: 17,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89014, latitude: 21.54084, altitude: 0 },
+    coordinates: {
+      longitude: 83.89014,
+      latitude: 21.54084,
+      altitude: 0.0,
+    },
   },
   {
     index: 18,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89005, latitude: 21.54068, altitude: 0 },
+    coordinates: {
+      longitude: 83.89005,
+      latitude: 21.54068,
+      altitude: 0.0,
+    },
   },
   {
     index: 19,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88987, latitude: 21.54036, altitude: 0 },
+    coordinates: {
+      longitude: 83.88987,
+      latitude: 21.54036,
+      altitude: 0.0,
+    },
   },
   {
     index: 20,
-    name: "GVQR+V2C, Hirakud Dam Rd, Hirakud, Odisha 768016, India",
+    name: "Biharipada",
     desc: "",
     station: true,
-    coordinates: { longitude: 83.88966, latitude: 21.53998, altitude: 0 },
+    coordinates: {
+      longitude: 83.88966,
+      latitude: 21.53998,
+      altitude: 0.0,
+    },
+    segment_km: 0.1891,
+    cumulative_km: 0.3975,
   },
   {
     index: 21,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88961, latitude: 21.53989, altitude: 0 },
+    coordinates: {
+      longitude: 83.88961,
+      latitude: 21.53989,
+      altitude: 0.0,
+    },
   },
   {
     index: 22,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.8896, latitude: 21.53988, altitude: 0 },
+    coordinates: {
+      longitude: 83.8896,
+      latitude: 21.53988,
+      altitude: 0.0,
+    },
   },
   {
     index: 23,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.8896, latitude: 21.53982, altitude: 0 },
+    coordinates: {
+      longitude: 83.8896,
+      latitude: 21.53982,
+      altitude: 0.0,
+    },
   },
   {
     index: 24,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88961, latitude: 21.53979, altitude: 0 },
+    coordinates: {
+      longitude: 83.88961,
+      latitude: 21.53979,
+      altitude: 0.0,
+    },
   },
   {
     index: 25,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88963, latitude: 21.53975, altitude: 0 },
+    coordinates: {
+      longitude: 83.88963,
+      latitude: 21.53975,
+      altitude: 0.0,
+    },
   },
   {
     index: 26,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88965, latitude: 21.53973, altitude: 0 },
+    coordinates: {
+      longitude: 83.88965,
+      latitude: 21.53973,
+      altitude: 0.0,
+    },
   },
   {
     index: 27,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.8897, latitude: 21.53969, altitude: 0 },
+    coordinates: {
+      longitude: 83.8897,
+      latitude: 21.53969,
+      altitude: 0.0,
+    },
   },
   {
     index: 28,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88972, latitude: 21.53968, altitude: 0 },
+    coordinates: {
+      longitude: 83.88972,
+      latitude: 21.53968,
+      altitude: 0.0,
+    },
   },
   {
     index: 29,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88975, latitude: 21.53967, altitude: 0 },
+    coordinates: {
+      longitude: 83.88975,
+      latitude: 21.53967,
+      altitude: 0.0,
+    },
   },
   {
     index: 30,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.88985, latitude: 21.53965, altitude: 0 },
+    coordinates: {
+      longitude: 83.88985,
+      latitude: 21.53965,
+      altitude: 0.0,
+    },
   },
   {
     index: 31,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89005, latitude: 21.53962, altitude: 0 },
+    coordinates: {
+      longitude: 83.89005,
+      latitude: 21.53962,
+      altitude: 0.0,
+    },
   },
   {
     index: 32,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89102, latitude: 21.53952, altitude: 0 },
+    coordinates: {
+      longitude: 83.89102,
+      latitude: 21.53952,
+      altitude: 0.0,
+    },
   },
   {
     index: 33,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89125, latitude: 21.53949, altitude: 0 },
+    coordinates: {
+      longitude: 83.89125,
+      latitude: 21.53949,
+      altitude: 0.0,
+    },
   },
   {
     index: 34,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89219, latitude: 21.53939, altitude: 0 },
+    coordinates: {
+      longitude: 83.89219,
+      latitude: 21.53939,
+      altitude: 0.0,
+    },
   },
   {
     index: 35,
     name: "",
     desc: "",
     station: false,
-    coordinates: { longitude: 83.89272, latitude: 21.53933, altitude: 0 },
+    coordinates: {
+      longitude: 83.89272,
+      latitude: 21.53933,
+      altitude: 0.0,
+    },
   },
   {
     index: 36,
-    name: "GVQV+634, Hirakud, Odisha 768016, India",
+    name: "Remed Chowk",
     desc: "",
     station: true,
-    coordinates: { longitude: 83.89285, latitude: 21.53931, altitude: 0 },
+    coordinates: {
+      longitude: 83.89285,
+      latitude: 21.53931,
+      altitude: 0.0,
+    },
+    segment_km: 0.3666,
+    cumulative_km: 0.764,
   },
 ];
 
 const STOPS = ROUTE_DATA.filter((p) => p.station);
+const LONGEST_STOP = STOPS.reduce((prev, curr) => {
+  const prevScore = prev.segment_km ?? 0;
+  const currScore = curr.segment_km ?? 0;
+  return currScore > prevScore ? curr : prev;
+});
 const FULL_PATH: LatLngTuple[] = ROUTE_DATA.map((p) => [
   p.coordinates.latitude,
   p.coordinates.longitude,
@@ -377,13 +567,6 @@ const makeVehicleIcon = () =>
     </style>`,
   });
 
-// const makeVehicleIcon = () =>
-//   L.divIcon({
-//     iconAnchor: [10, 10],
-//     iconSize: [20, 20],
-//     html: `<img src=${logo} alt="Logo" />`,
-//   });
-
 // ─── Map controller (pan/fly without remounting) ─────────────────────────────
 interface MapControllerProps {
   lat: number;
@@ -405,141 +588,313 @@ interface StopItemProps {
   stop: RoutePoint;
   index: number;
   status: "passed" | "current" | "upcoming";
+  isFirst: boolean;
   isLast: boolean;
+  cummulativeDistance: number;
+  nextStopLen: number;
+  maxStopLen: number;
+  vehicleProjection: number;
   onClick: () => void;
 }
 const StopItem: React.FC<StopItemProps> = ({
   stop,
   index,
   status,
+  isFirst,
   isLast,
+  cummulativeDistance,
+  nextStopLen,
+  maxStopLen,
+  vehicleProjection,
   onClick,
 }) => {
-  const dotColor =
+  const stopColor =
     status === "passed"
-      ? "#a8ff3e"
+      ? "#44307c"
       : status === "current"
-        ? "#00e5ff"
-        : "#3a4a5a";
-  const textColor =
+        ? "#44307c"
+        : "white";
+
+  const stopBorderColor =
     status === "passed"
-      ? "text.disabled"
+      ? "white"
       : status === "current"
-        ? "text.primary"
-        : "text.secondary";
+        ? "#7E59E8"
+        : "#7E59E8";
+
+  const textColor = "text.primary";
+
+  const nextStopLenInPx = Math.round(
+    nextStopLen * Math.round(200 / maxStopLen),
+  );
+
+  const cummulativeLenInPx = Math.round(
+    cummulativeDistance * Math.round(200 / maxStopLen),
+  );
+
+  const vehicleProjectionInPx = Math.round(
+    vehicleProjection * Math.round(200 / maxStopLen),
+  );
+
+  const remainKmtoStop = Math.max(
+    cummulativeDistance + nextStopLen - vehicleProjection,
+    0,
+  );
 
   return (
     <Box
-      onClick={onClick}
       sx={{
-        display: "flex",
-        gap: 1.5,
-        px: 2,
-        py: 1.25,
-        cursor: "pointer",
-        bgcolor: "rgb(255, 255, 255)",
-        position: "relative",
+        display: "grid",
+        gridTemplateColumns: "1fr 3fr 1fr",
+        gap: 1,
+        height: `${nextStopLenInPx}px`,
       }}
     >
-      {/* Connector line */}
-      {!isLast && (
-        <Box
-          sx={{
-            position: "absolute",
-            left: "22px",
-            top: "30px",
-            bottom: "-10px",
-            width: "2px",
-            bgcolor:
-              status === "passed"
-                ? "rgba(168,255,62,0.25)"
-                : "rgba(255,255,255,0.06)",
-          }}
-        />
-      )}
-
-      {/* Dot */}
-      <Box sx={{ flexShrink: 0, pt: 0.4, zIndex: 1 }}>
-        <Box
-          sx={{
-            width: 14,
-            height: 14,
-            borderRadius: "50%",
-            bgcolor: dotColor,
-            border: `2px solid ${dotColor}`,
-            boxShadow:
-              status === "current"
-                ? `0 0 10px #00e5ff`
-                : status === "passed"
-                  ? `0 0 4px #a8ff3e55`
-                  : "none",
-            transition: "all 0.3s",
-          }}
-        />
+      <Box>
+        {/* Text */}
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#44307c",
+              fontSize: 11,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+            }}
+          >
+            07:15 AM
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: textColor,
+              fontSize: 11,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+            }}
+          >
+            07:15 AM
+          </Typography>
+        </Box>
       </Box>
+      <Box
+        onClick={onClick}
+        sx={{
+          display: "flex",
+          gap: 1.5,
+          cursor: "pointer",
+          bgcolor: "rgb(255, 255, 255)",
+          position: "relative",
+          minHeight: 100,
+        }}
+      >
+        {/* Connector line Path */}
+        {!isLast && (
+          <Box
+            sx={{
+              position: "absolute",
+              left: "8px",
+              top: "0px",
+              bottom: "0px",
+              width: "4px",
+              bgcolor: "#7E59E8",
+            }}
+          />
+        )}
+        {/* Connector line Covered */}
+        {!isLast && (
+          <Box
+            sx={{
+              position: "absolute",
+              left: "8px",
+              top: "0px",
+              height: `${vehicleProjectionInPx - cummulativeLenInPx}px`,
+              width: "4px",
+              bgcolor: "#44307c",
+            }}
+          />
+        )}
 
-      {/* Text */}
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography
-          variant="caption"
-          sx={{
-            color: "text.disabled",
-            fontSize: 9,
-            letterSpacing: "0.1em",
-            display: "block",
-          }}
-        >
-          STOP {index + 1} · IDX {stop.index}
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: textColor,
-            fontSize: 11,
-            lineHeight: 1.45,
-            wordBreak: "break-word",
-            mt: 0.25,
-          }}
-        >
-          {stop.name || `Station ${index + 1}`}
-        </Typography>
-        <Typography
-          variant="caption"
-          sx={{ color: "text.disabled", fontSize: 10 }}
-        >
-          {stop.coordinates.latitude.toFixed(5)},{" "}
-          {stop.coordinates.longitude.toFixed(5)}
-        </Typography>
+        {/* Connector line Covered Distance */}
+        {!isLast && (
+          <Box
+            sx={{
+              position: "absolute",
+              left: "-8px",
+              top: "0px",
+              height: `${vehicleProjectionInPx - cummulativeLenInPx}px`,
+              width: "8px",
+              border:
+                vehicleProjectionInPx <= cummulativeLenInPx
+                  ? "none"
+                  : "1px solid #44307c",
+              borderRight: "none",
+              bgcolor: "#44307c00",
+            }}
+          />
+        )}
+
+        {/* Dot */}
+        {isFirst || isLast ? (
+          <Box sx={{ flexShrink: 0, zIndex: 1, position: "relative" }}>
+            <Box
+              sx={{
+                width: 20,
+                height: 20,
+                bgcolor: stopColor,
+                border: `2px solid ${stopBorderColor}`,
+                transition: "all 0.3s",
+                rotate: "45deg",
+              }}
+            />
+            {(status === "current" || status === "passed") && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: "5px",
+                  top: "2px",
+                  color: "white",
+                  fontSize: 12,
+                }}
+              >
+                ✔
+              </Box>
+            )}
+          </Box>
+        ) : (
+          <Box sx={{ flexShrink: 0, zIndex: 1 }}>
+            <Box
+              sx={{
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                bgcolor: stopColor,
+                border: `2px solid ${stopBorderColor}`,
+                transition: "all 0.3s",
+              }}
+            />
+            {(status === "current" || status === "passed") && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: "5px",
+                  top: "2px",
+                  color: "white",
+                  fontSize: 12,
+                }}
+              >
+                ✔
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* Text */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              display: "block",
+            }}
+          >
+            S-{index + 1} (
+            {cummulativeDistance < 1
+              ? (cummulativeDistance * 1000).toFixed(0) + " Meter"
+              : cummulativeDistance.toFixed(2) + " KM"}
+            )
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: textColor,
+              fontSize: 11,
+              fontWeight: 800,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+            }}
+          >
+            {stop.name || `Station ${index + 1}`}
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: textColor,
+              fontSize: 11,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+              visibility:
+                vehicleProjectionInPx <= cummulativeLenInPx
+                  ? "hidden"
+                  : remainKmtoStop > 0
+                    ? "visible"
+                    : "hidden",
+            }}
+          >
+            Travelled{" "}
+            {vehicleProjection < 1
+              ? (vehicleProjection * 1000).toFixed(0) + " Meter"
+              : vehicleProjection.toFixed(2) + " KM"}
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: textColor,
+              fontSize: 11,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+              visibility:
+                vehicleProjectionInPx <= cummulativeLenInPx
+                  ? "hidden"
+                  : remainKmtoStop > 0
+                    ? "visible"
+                    : "hidden",
+            }}
+          >
+            Next Stop{" "}
+            {remainKmtoStop < 1
+              ? (remainKmtoStop * 1000).toFixed(0) + " Meter"
+              : remainKmtoStop.toFixed(2) + " KM"}
+          </Typography>
+        </Box>
       </Box>
-
-      {status === "passed" && (
-        <Chip
-          label="✓"
-          size="small"
-          sx={{
-            height: 18,
-            fontSize: 10,
-            bgcolor: "rgba(168,255,62,0.1)",
-            color: "#a8ff3e",
-            border: "1px solid rgba(168,255,62,0.3)",
-            alignSelf: "center",
-          }}
-        />
-      )}
-      {status === "current" && (
-        <Chip
-          label="HERE"
-          size="small"
-          sx={{
-            height: 18,
-            fontSize: 9,
-            bgcolor: "rgba(0,229,255,0.1)",
-            color: "#00e5ff",
-            border: "1px solid rgba(0,229,255,0.3)",
-            alignSelf: "center",
-          }}
-        />
-      )}
+      <Box>
+        {/* Text */}
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#44307c",
+              fontSize: 11,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+            }}
+          >
+            07:15 AM
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: textColor,
+              fontSize: 11,
+              lineHeight: 1.45,
+              wordBreak: "break-word",
+              mt: 0.25,
+            }}
+          >
+            07:15 AM
+          </Typography>
+        </Box>
+      </Box>
     </Box>
   );
 };
@@ -643,17 +998,6 @@ const LiveTracking: React.FC = () => {
   }, [id, refetch]);
 
   // ── Derived values ─────────────────────────────────────────────────────────
-  const progressPct = Math.round((simIdx / (ROUTE_DATA.length - 1)) * 100);
-
-  const aheadPath: LatLngTuple[] = useMemo(
-    () =>
-      ROUTE_DATA.slice(simIdx).map((p) => [
-        p.coordinates.latitude,
-        p.coordinates.longitude,
-      ]),
-    [simIdx],
-  );
-
   const vehicleIcon = useMemo(() => makeVehicleIcon(), []);
 
   const stopStatuses = useMemo(
@@ -695,7 +1039,7 @@ const LiveTracking: React.FC = () => {
   const flyToStop = (stop: RoutePoint) => {
     mapRef.current?.flyTo(
       [stop.coordinates.latitude, stop.coordinates.longitude],
-      17,
+      18,
       { duration: 1 },
     );
   };
@@ -715,6 +1059,21 @@ const LiveTracking: React.FC = () => {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+
+  const cumKm = buildCumulativeKm(ROUTE_DATA);
+  // const { projection, stopDistances, nearestStop } = getVehicleRouteInfo(
+  //   displayLat,
+  //   displayLng,
+  //   ROUTE_DATA,
+  //   cumKm,
+  // );
+
+  const vehicleRouteInfo = useMemo(() => {
+    return getDistanceCovered(displayLat, displayLng, ROUTE_DATA, cumKm);
+  }, [displayLat, displayLng, ROUTE_DATA, cumKm]);
+
+  const projectionKm = vehicleRouteInfo;
+
   return (
     <Card
       sx={{
@@ -763,7 +1122,7 @@ const LiveTracking: React.FC = () => {
           {/* ── SIDEBAR ── */}
           <Box
             sx={{
-              width: 300,
+              width: 400,
             }}
           >
             <Autocomplete
@@ -775,21 +1134,54 @@ const LiveTracking: React.FC = () => {
                 <TextField {...params} label="Select Vehicle" size="small" />
               )}
             />
-            {/* Stop list */}
-            <Box sx={{ maxHeight: "100%", overflow: "auto" }}>
-              {STOPS.map((stop, i) => (
+
+            {/* <Box
+              sx={{
+                position: "relative",
+                overflowY: "auto",
+                height: "100%",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 3fr 1fr",
+                  gap: 1,
+                  pt: 2,
+                }}
+              >
+                <Box>
+                  <Typography sx={{ mb: 2 }}>Arrival</Typography>
+                </Box>
+                <Box>
+                  <Typography sx={{ mb: 2 }}>Stop/Station</Typography>
+                </Box>
+                <Box>
+                  <Typography sx={{ mb: 2 }}>Departure</Typography>
+                </Box>
+              </Box>
+              {/* Stop list */}
+            {/* {STOPS.map((stop, i) => (
                 <StopItem
                   key={stop.index}
                   stop={stop}
                   index={i}
                   status={stopStatuses[i]}
+                  isFirst={i === 0}
                   isLast={i === STOPS.length - 1}
+                  cummulativeDistance={stop.cumulative_km ?? 0}
+                  nextStopLen={
+                    i === STOPS.length - 1 ? 0 : (STOPS[i + 1].segment_km ?? 0)
+                  }
+                  maxStopLen={LONGEST_STOP.segment_km ?? 0}
+                  vehicleProjection={projectionKm}
                   onClick={() => flyToStop(stop)}
                 />
-              ))}
-            </Box>
+              ))} */}
+            {/* </Box> */}
+
             {/* Empty list */}
-            {/* <Box
+            <Box
               sx={{
                 mt: 1,
                 height: "100%",
@@ -802,7 +1194,7 @@ const LiveTracking: React.FC = () => {
               <Typography>
                 Select any vehicle to see its route and more details.
               </Typography>
-            </Box> */}
+            </Box>
           </Box>
 
           {/* ── MAP ── */}
@@ -830,19 +1222,11 @@ const LiveTracking: React.FC = () => {
               <Polyline
                 positions={FULL_PATH}
                 pathOptions={{
-                  color: "rgba(255, 255, 255, 0.56)",
+                  color: "rgb(255, 255, 255)",
                   weight: 3,
                   dashArray: "7,6",
                 }}
               />
-
-              {/* Ahead path */}
-              {aheadPath.length > 1 && (
-                <Polyline
-                  positions={aheadPath}
-                  pathOptions={{ color: "rgba(31, 31, 31, 0.22)", weight: 4 }}
-                />
-              )}
 
               {/* Travelled trail */}
               {trail.length > 1 && (
@@ -877,11 +1261,11 @@ const LiveTracking: React.FC = () => {
                     icon={makeStopIcon(String(i + 1), color)}
                   >
                     <Popup>
-                      <Box sx={{ fontFamily: "monospace", minWidth: 180 }}>
+                      <Box sx={{ minWidth: 180 }}>
                         <Typography
                           sx={{
                             fontWeight: 700,
-                            color: "#00e5ff",
+                            color: "#8167e8",
                             fontSize: 13,
                             mb: 0.5,
                           }}
@@ -890,23 +1274,14 @@ const LiveTracking: React.FC = () => {
                         </Typography>
                         <Typography
                           sx={{
-                            fontSize: 11,
-                            color: "#aaa",
+                            fontSize: 16,
+                            color: "#8167e8",
                             mb: 0.75,
                             lineHeight: 1.4,
+                            fontWeight: 600,
                           }}
                         >
                           {stop.name || `Station ${i + 1}`}
-                        </Typography>
-                        <Typography
-                          sx={{
-                            fontSize: 10,
-                            color: "#666",
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          {stop.coordinates.latitude.toFixed(6)},<br />
-                          {stop.coordinates.longitude.toFixed(6)}
                         </Typography>
                         <Chip
                           label="● STATION"
@@ -915,9 +1290,9 @@ const LiveTracking: React.FC = () => {
                             mt: 1,
                             height: 18,
                             fontSize: 9,
-                            bgcolor: "rgba(255,205,0,0.12)",
-                            color: "#ffcd00",
-                            border: "1px solid rgba(255,205,0,0.3)",
+                            bgcolor: "rgba(93, 0, 255, 0.12)",
+                            color: "#6e2ed5",
+                            border: "1px solid rgba(72, 0, 255, 0.3)",
                           }}
                         />
                       </Box>
@@ -933,22 +1308,17 @@ const LiveTracking: React.FC = () => {
                 zIndexOffset={1000}
               >
                 <Popup>
-                  <Box sx={{ fontFamily: "monospace" }}>
+                  <Box>
                     <Typography
                       sx={{
-                        fontWeight: 700,
-                        color: "#44307C",
-                        fontSize: 13,
-                        mb: 0.5,
+                        fontSize: 16,
+                        color: "#8167e8",
+                        mb: 0.75,
+                        lineHeight: 1.4,
+                        fontWeight: 600,
                       }}
                     >
-                      Vehicle
-                    </Typography>
-                    <Typography sx={{ fontSize: 10, color: "#888" }}>
-                      {displayLat.toFixed(6)}, {displayLng.toFixed(6)}
-                    </Typography>
-                    <Typography sx={{ fontSize: 10, color: "#666", mt: 0.5 }}>
-                      Point {simIdx} / {ROUTE_DATA.length - 1}
+                      Bus
                     </Typography>
                   </Box>
                 </Popup>
