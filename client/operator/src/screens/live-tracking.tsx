@@ -1,10 +1,4 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 
 import {
   MapContainer,
@@ -18,7 +12,8 @@ import {
 import L, { type LatLngTuple } from "leaflet";
 
 import { useParams } from "react-router-dom";
-import { useGetOne, useNotify } from "react-admin";
+import { useGetOne, useGetList, useNotify } from "react-admin";
+
 import {
   Box,
   Card,
@@ -35,8 +30,6 @@ import {
 } from "@mui/material";
 
 import logo from "../assets/logo.png";
-import route_map_img from "../assets/route-maps.png";
-
 import {
   buildCumulativeKm,
   getDistanceCovered,
@@ -60,6 +53,7 @@ interface Coordinates {
 }
 
 interface RoutePoint {
+  id?: string | number;
   index: number;
   name: string;
   desc: string;
@@ -69,470 +63,36 @@ interface RoutePoint {
   cumulative_km?: number;
 }
 
-interface LiveLocationRecord {
-  id: string | number;
+interface LiveLocsRecord {
+  timestamp: number;
   lat: number;
   lng: number;
-  routeIndex?: number;
-  speed?: number;
-  heading?: number;
+  alt: number;
 }
 
-function haversineDistance(a: Coordinates, b: Coordinates): number {
-  const R = 6371; // km
+interface LiveStructuredRecord {
+  locs: LiveLocsRecord;
+}
 
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
+interface LiveLocationRecord {
+  id: string | number;
+  structured: LiveStructuredRecord;
+  routeIndex?: number;
+}
 
-  const dLat = toRad(b.latitude - a.latitude);
-  const dLon = toRad(b.longitude - a.longitude);
-
-  const lat1 = toRad(a.latitude);
-  const lat2 = toRad(b.latitude);
-
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-
-  const d = 2 * R * Math.asin(Math.sqrt(h));
-
-  return d;
+interface VehicleRecord {
+  id: string | number;
+  registrationNumber: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 10000;
 const MAX_TRAIL_POINTS = 500;
+const DEFAULT_CENTER: LatLngTuple = [21.5300211, 83.858938]; // India fallback
+const DEFAULT_ZOOM = 10;
+const SELECTED_ZOOM = 10;
 
-// Inline route data — replace with an API call / prop as needed
-const ROUTE_DATA: RoutePoint[] = [
-  {
-    index: 0,
-    name: "Durgamandir Chowk",
-    desc: "",
-    station: true,
-    coordinates: {
-      longitude: 83.8891,
-      latitude: 21.54244,
-      altitude: 0.0,
-    },
-    segment_km: 0.0,
-    cumulative_km: 0.0,
-  },
-  {
-    index: 1,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88962,
-      latitude: 21.54245,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 2,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88971,
-      latitude: 21.54243,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 3,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88978,
-      latitude: 21.54242,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 4,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88979,
-      latitude: 21.54242,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 5,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88986,
-      latitude: 21.54237,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 6,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.8902,
-      latitude: 21.54207,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 7,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89046,
-      latitude: 21.54182,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 8,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.8905,
-      latitude: 21.54177,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 9,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89051,
-      latitude: 21.54175,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 10,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89054,
-      latitude: 21.54171,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 11,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89055,
-      latitude: 21.54167,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 12,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89055,
-      latitude: 21.54164,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 13,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89055,
-      latitude: 21.54162,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 14,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89053,
-      latitude: 21.54154,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 15,
-    name: "Saktimandir",
-    desc: "",
-    station: true,
-    coordinates: {
-      longitude: 83.8905,
-      latitude: 21.54149,
-      altitude: 0.0,
-    },
-    segment_km: 0.2084,
-    cumulative_km: 0.2084,
-  },
-  {
-    index: 16,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89023,
-      latitude: 21.541,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 17,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89014,
-      latitude: 21.54084,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 18,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89005,
-      latitude: 21.54068,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 19,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88987,
-      latitude: 21.54036,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 20,
-    name: "Biharipada",
-    desc: "",
-    station: true,
-    coordinates: {
-      longitude: 83.88966,
-      latitude: 21.53998,
-      altitude: 0.0,
-    },
-    segment_km: 0.1891,
-    cumulative_km: 0.3975,
-  },
-  {
-    index: 21,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88961,
-      latitude: 21.53989,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 22,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.8896,
-      latitude: 21.53988,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 23,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.8896,
-      latitude: 21.53982,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 24,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88961,
-      latitude: 21.53979,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 25,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88963,
-      latitude: 21.53975,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 26,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88965,
-      latitude: 21.53973,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 27,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.8897,
-      latitude: 21.53969,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 28,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88972,
-      latitude: 21.53968,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 29,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88975,
-      latitude: 21.53967,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 30,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.88985,
-      latitude: 21.53965,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 31,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89005,
-      latitude: 21.53962,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 32,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89102,
-      latitude: 21.53952,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 33,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89125,
-      latitude: 21.53949,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 34,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89219,
-      latitude: 21.53939,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 35,
-    name: "",
-    desc: "",
-    station: false,
-    coordinates: {
-      longitude: 83.89272,
-      latitude: 21.53933,
-      altitude: 0.0,
-    },
-  },
-  {
-    index: 36,
-    name: "Remed Chowk",
-    desc: "",
-    station: true,
-    coordinates: {
-      longitude: 83.89285,
-      latitude: 21.53931,
-      altitude: 0.0,
-    },
-    segment_km: 0.3666,
-    cumulative_km: 0.764,
-  },
-];
-
-const STOPS = ROUTE_DATA.filter((p) => p.station);
-const LONGEST_STOP = STOPS.reduce((prev, curr) => {
-  const prevScore = prev.segment_km ?? 0;
-  const currScore = curr.segment_km ?? 0;
-  return currScore > prevScore ? curr : prev;
-});
-const FULL_PATH: LatLngTuple[] = ROUTE_DATA.map((p) => [
-  p.coordinates.latitude,
-  p.coordinates.longitude,
-]);
-
-// ─── Custom marker icons ──────────────────────────────────────────────────────
+// ─── Icons ───────────────────────────────────────────────────────────────────
 const makeStopIcon = (label: string, color: string) =>
   L.divIcon({
     className: "",
@@ -547,17 +107,26 @@ const makeStopIcon = (label: string, color: string) =>
     ">${label}</div>`,
   });
 
-const makeVehicleIcon = () =>
+/**
+ * Bus marker icon.
+ * selected=true  → larger, pulsing purple ring
+ * selected=false → smaller, plain white ring
+ */
+const makeVehicleIcon = (selected: boolean) =>
   L.divIcon({
     className: "",
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    html: `<div style="
-    border: 1px solid white;
-      width:30px;height:30px;border-radius:50%; overflow: hidden;
-      animation:vPulse 1.4s ease-in-out infinite;
+    iconSize: [selected ? 36 : 28, selected ? 36 : 28],
+    iconAnchor: [selected ? 18 : 14, selected ? 18 : 14],
+    html: `
+    <div style="
+      border: ${selected ? "2px solid #7E59E8" : "1px solid white"};
+      width:${selected ? 36 : 28}px;
+      height:${selected ? 36 : 28}px;
+      border-radius:50%;
+      overflow:hidden;
+      animation:${selected ? "vPulse 1.4s ease-in-out infinite" : "none"};
     ">
-    <img src=${logo} alt="Logo" style="width:30px;height:"30px;" />
+      <img src=${logo} alt="Bus" style="width:100%;height:100%;" />
     </div>
     <style>
       @keyframes vPulse {
@@ -567,7 +136,7 @@ const makeVehicleIcon = () =>
     </style>`,
   });
 
-// ─── Map controller (pan/fly without remounting) ─────────────────────────────
+// ─── Map controller (pan to follow selected vehicle) ─────────────────────────
 interface MapControllerProps {
   lat: number;
   lng: number;
@@ -576,9 +145,7 @@ interface MapControllerProps {
 const MapController: React.FC<MapControllerProps> = ({ lat, lng, follow }) => {
   const map = useMap();
   useEffect(() => {
-    if (follow) {
-      map.panTo([lat, lng], { animate: true, duration: 0.6 });
-    }
+    if (follow) map.panTo([lat, lng], { animate: true, duration: 0.6 });
   }, [lat, lng, follow, map]);
   return null;
 };
@@ -596,6 +163,7 @@ interface StopItemProps {
   vehicleProjection: number;
   onClick: () => void;
 }
+
 const StopItem: React.FC<StopItemProps> = ({
   stop,
   index,
@@ -614,32 +182,18 @@ const StopItem: React.FC<StopItemProps> = ({
       : status === "current"
         ? "#44307c"
         : "white";
+  const stopBorderColor = status === "passed" ? "white" : "#7E59E8";
 
-  const stopBorderColor =
-    status === "passed"
-      ? "white"
-      : status === "current"
-        ? "#7E59E8"
-        : "#7E59E8";
-
-  const textColor = "text.primary";
-
-  const nextStopLenInPx = Math.round(
-    nextStopLen * Math.round(200 / maxStopLen),
-  );
-
-  const cummulativeLenInPx = Math.round(
-    cummulativeDistance * Math.round(200 / maxStopLen),
-  );
-
-  const vehicleProjectionInPx = Math.round(
-    vehicleProjection * Math.round(200 / maxStopLen),
-  );
-
+  const scale = Math.round(200 / Math.max(maxStopLen, 0.001));
+  const nextStopLenInPx = Math.round(nextStopLen * scale);
+  const cummulativeLenInPx = Math.round(cummulativeDistance * scale);
+  const vehicleProjectionInPx = Math.round(vehicleProjection * scale);
   const remainKmtoStop = Math.max(
     cummulativeDistance + nextStopLen - vehicleProjection,
     0,
   );
+  const progressVisible =
+    vehicleProjectionInPx > cummulativeLenInPx && remainKmtoStop > 0;
 
   return (
     <Box
@@ -650,93 +204,60 @@ const StopItem: React.FC<StopItemProps> = ({
         height: `${nextStopLenInPx}px`,
       }}
     >
-      <Box>
-        {/* Text */}
-        <Box>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "#44307c",
-              fontSize: 11,
-              lineHeight: 1.45,
-              wordBreak: "break-word",
-              mt: 0.25,
-            }}
-          >
-            07:15 AM
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: textColor,
-              fontSize: 11,
-              lineHeight: 1.45,
-              wordBreak: "break-word",
-              mt: 0.25,
-            }}
-          >
-            07:15 AM
-          </Typography>
-        </Box>
-      </Box>
+      <Box />
       <Box
         onClick={onClick}
         sx={{
           display: "flex",
           gap: 1.5,
           cursor: "pointer",
-          bgcolor: "rgb(255, 255, 255)",
+          bgcolor: "#fff",
           position: "relative",
           minHeight: 100,
         }}
       >
-        {/* Connector line Path */}
+        {/* Track background */}
         {!isLast && (
           <Box
             sx={{
               position: "absolute",
               left: "8px",
-              top: "0px",
-              bottom: "0px",
+              top: 0,
+              bottom: 0,
               width: "4px",
               bgcolor: "#7E59E8",
             }}
           />
         )}
-        {/* Connector line Covered */}
+        {/* Track covered */}
         {!isLast && (
           <Box
             sx={{
               position: "absolute",
               left: "8px",
-              top: "0px",
+              top: 0,
               height: `${vehicleProjectionInPx - cummulativeLenInPx}px`,
               width: "4px",
               bgcolor: "#44307c",
             }}
           />
         )}
-
-        {/* Connector line Covered Distance */}
-        {!isLast && (
+        {/* Bracket */}
+        {!isLast && vehicleProjectionInPx > cummulativeLenInPx && (
           <Box
             sx={{
               position: "absolute",
               left: "-8px",
-              top: "0px",
+              top: 0,
               height: `${vehicleProjectionInPx - cummulativeLenInPx}px`,
               width: "8px",
-              border:
-                vehicleProjectionInPx <= cummulativeLenInPx
-                  ? "none"
-                  : "1px solid #44307c",
+              border: "1px solid #44307c",
               borderRight: "none",
-              bgcolor: "#44307c00",
             }}
           />
         )}
 
-        {/* Dot */}
+        {/* Stop dot */}
         {isFirst || isLast ? (
           <Box sx={{ flexShrink: 0, zIndex: 1, position: "relative" }}>
             <Box
@@ -749,7 +270,7 @@ const StopItem: React.FC<StopItemProps> = ({
                 rotate: "45deg",
               }}
             />
-            {(status === "current" || status === "passed") && (
+            {status !== "upcoming" && (
               <Box
                 sx={{
                   position: "absolute",
@@ -764,7 +285,7 @@ const StopItem: React.FC<StopItemProps> = ({
             )}
           </Box>
         ) : (
-          <Box sx={{ flexShrink: 0, zIndex: 1 }}>
+          <Box sx={{ flexShrink: 0, zIndex: 1, position: "relative" }}>
             <Box
               sx={{
                 width: 20,
@@ -775,7 +296,7 @@ const StopItem: React.FC<StopItemProps> = ({
                 transition: "all 0.3s",
               }}
             />
-            {(status === "current" || status === "passed") && (
+            {status !== "upcoming" && (
               <Box
                 sx={{
                   position: "absolute",
@@ -791,12 +312,11 @@ const StopItem: React.FC<StopItemProps> = ({
           </Box>
         )}
 
-        {/* Text */}
+        {/* Labels */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             variant="caption"
             sx={{
-              color: "text",
               fontSize: 11,
               fontWeight: 600,
               letterSpacing: "0.1em",
@@ -805,14 +325,13 @@ const StopItem: React.FC<StopItemProps> = ({
           >
             S-{index + 1} (
             {cummulativeDistance < 1
-              ? (cummulativeDistance * 1000).toFixed(0) + " Meter"
-              : cummulativeDistance.toFixed(2) + " KM"}
+              ? (cummulativeDistance * 1000).toFixed(0) + " m"
+              : cummulativeDistance.toFixed(2) + " km"}
             )
           </Typography>
           <Typography
             variant="body2"
             sx={{
-              color: textColor,
               fontSize: 11,
               fontWeight: 800,
               lineHeight: 1.45,
@@ -822,79 +341,31 @@ const StopItem: React.FC<StopItemProps> = ({
           >
             {stop.name || `Station ${index + 1}`}
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: textColor,
-              fontSize: 11,
-              lineHeight: 1.45,
-              wordBreak: "break-word",
-              mt: 0.25,
-              visibility:
-                vehicleProjectionInPx <= cummulativeLenInPx
-                  ? "hidden"
-                  : remainKmtoStop > 0
-                    ? "visible"
-                    : "hidden",
-            }}
-          >
-            Travelled{" "}
-            {vehicleProjection < 1
-              ? (vehicleProjection * 1000).toFixed(0) + " Meter"
-              : vehicleProjection.toFixed(2) + " KM"}
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: textColor,
-              fontSize: 11,
-              lineHeight: 1.45,
-              wordBreak: "break-word",
-              mt: 0.25,
-              visibility:
-                vehicleProjectionInPx <= cummulativeLenInPx
-                  ? "hidden"
-                  : remainKmtoStop > 0
-                    ? "visible"
-                    : "hidden",
-            }}
-          >
-            Next Stop{" "}
-            {remainKmtoStop < 1
-              ? (remainKmtoStop * 1000).toFixed(0) + " Meter"
-              : remainKmtoStop.toFixed(2) + " KM"}
-          </Typography>
+          {progressVisible && (
+            <>
+              <Typography
+                variant="body2"
+                sx={{ fontSize: 11, lineHeight: 1.45, mt: 0.25 }}
+              >
+                Travelled{" "}
+                {vehicleProjection < 1
+                  ? (vehicleProjection * 1000).toFixed(0) + " m"
+                  : vehicleProjection.toFixed(2) + " km"}
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ fontSize: 11, lineHeight: 1.45, mt: 0.25 }}
+              >
+                Next Stop{" "}
+                {remainKmtoStop < 1
+                  ? (remainKmtoStop * 1000).toFixed(0) + " m"
+                  : remainKmtoStop.toFixed(2) + " km"}
+              </Typography>
+            </>
+          )}
         </Box>
       </Box>
-      <Box>
-        {/* Text */}
-        <Box>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "#44307c",
-              fontSize: 11,
-              lineHeight: 1.45,
-              wordBreak: "break-word",
-              mt: 0.25,
-            }}
-          >
-            07:15 AM
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: textColor,
-              fontSize: 11,
-              lineHeight: 1.45,
-              wordBreak: "break-word",
-              mt: 0.25,
-            }}
-          >
-            07:15 AM
-          </Typography>
-        </Box>
-      </Box>
+      <Box />
     </Box>
   );
 };
@@ -903,67 +374,110 @@ const StopItem: React.FC<StopItemProps> = ({
 const LiveTracking: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const notify = useNotify();
-
-  // Map instance ref (for imperative control)
   const mapRef = useRef<L.Map | null>(null);
 
-  // UI state
   const [follow, setFollow] = useState(true);
-  const [speedMult, setSpeedMult] = useState(1);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<
+    string | number | null
+  >(id ?? null);
 
-  // Live trail (accumulated GPS positions)
+  // Trail only for the currently selected vehicle
   const [trail, setTrail] = useState<LatLngTuple[]>([]);
   const lastKeyRef = useRef<string | null>(null);
-
-  // Simulated playback state (for demo — remove in production)
-  const [simIdx, setSimIdx] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastStopRef = useRef(-1);
 
-  // React Admin data fetch
-  const { data, isLoading, error, refetch } = useGetOne<LiveLocationRecord>(
-    "locations",
-    { id: id ?? "" },
-    { enabled: !!id },
+  // ── 1. Vehicle list for the dropdown ─────────────────────────────────────
+  // GET /totalVehicles → [{ id, registrationNumber }]
+  const { data: vehicleList, isLoading: vehiclesLoading } =
+    useGetList<VehicleRecord>("totalVehicles", {
+      pagination: { page: 1, perPage: 100 },
+      sort: { field: "registrationNumber", order: "ASC" },
+    });
+
+  // ── 2. ALL live data (all bus markers on map) ────────────────────────
+  // GET /live → [{ id, structured }]
+  const { data: allLocations, refetch: refetchAllLocations } =
+    useGetList<LiveLocationRecord>("live", {
+      pagination: { page: 1, perPage: 500 },
+      sort: { field: "id", order: "ASC" },
+    });
+
+  // ── 3. Selected vehicle — dedicated single-record poll ────────────────────
+  // GET /live/:id → { id, structured }
+  const { data: selectedLocation, refetch: refetchSelectedLocation } =
+    useGetOne<LiveLocationRecord>(
+      "live",
+      { id: selectedVehicleId ?? "" },
+      { enabled: !!selectedVehicleId },
+    );
+
+  // ── 4. Route for selected vehicle only ───────────────────────────────────
+  // GET /routes/:vehicleId → { id, points: RoutePoint[] }
+  const {
+    data: routeData,
+    isLoading: routeLoading,
+    error: routeError,
+  } = useGetOne<{ id: string | number; points: RoutePoint[] }>(
+    "routes",
+    { id: selectedVehicleId ?? "" },
+    { enabled: !!selectedVehicleId },
   );
 
-  // ── Derived display position ────────────────────────────────────────────────
-  // In production: use data.lat / data.lng directly.
-  // Here we overlay the simulated position on top of the live fetch for demo.
-  const displayPt = ROUTE_DATA[simIdx];
-  const displayLat = displayPt.coordinates.latitude;
-  const displayLng = displayPt.coordinates.longitude;
-
-  // ── Simulation tick (replace with polling logic in production) ─────────────
-  const startSim = useCallback(() => {
-    if (simRef.current) clearInterval(simRef.current);
-    const ms = Math.max(50, Math.round(900 / speedMult));
-    simRef.current = setInterval(() => {
-      setSimIdx((prev) => {
-        if (prev >= ROUTE_DATA.length - 1) {
-          clearInterval(simRef.current!);
-          setIsPlaying(false);
-          notify("Route complete — vehicle has reached the final stop.", {
-            type: "success",
-          });
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, ms);
-  }, [speedMult, notify]);
-
+  // ── Poll all locations ────────────────────────────────────────────────────
   useEffect(() => {
-    if (isPlaying) startSim();
-    else if (simRef.current) clearInterval(simRef.current);
-    return () => {
-      if (simRef.current) clearInterval(simRef.current);
-    };
-  }, [isPlaying, startSim]);
+    const interval = setInterval(() => {
+      refetchAllLocations().catch(() => {});
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [refetchAllLocations]);
 
-  // ── Append to trail on position change ────────────────────────────────────
+  // ── Poll selected vehicle location ───────────────────────────────────────
   useEffect(() => {
+    if (!selectedVehicleId) return;
+    const interval = setInterval(() => {
+      refetchSelectedLocation().catch(() => {});
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [selectedVehicleId, refetchSelectedLocation]);
+
+  // ── Derived route data ────────────────────────────────────────────────────
+  const ROUTE_DATA = useMemo(() => routeData?.points ?? [], [routeData]);
+  const STOPS = useMemo(
+    () => ROUTE_DATA.filter((p) => p.station),
+    [ROUTE_DATA],
+  );
+  const LONGEST_STOP = useMemo(
+    () =>
+      STOPS.length > 0
+        ? STOPS.reduce((a, b) =>
+            (b.segment_km ?? 0) > (a.segment_km ?? 0) ? b : a,
+          )
+        : null,
+    [STOPS],
+  );
+  const FULL_PATH: LatLngTuple[] = useMemo(
+    () =>
+      ROUTE_DATA.map((p) => [p.coordinates.latitude, p.coordinates.longitude]),
+    [ROUTE_DATA],
+  );
+
+  // ── Active location for selected vehicle ─────────────────────────────────
+  // Prefer the dedicated single-record poll; fall back to entry in the list.
+  const selectedInList = useMemo(
+    () => (allLocations ?? []).find((l) => l.id === selectedVehicleId) ?? null,
+    [allLocations, selectedVehicleId],
+  );
+  const activeLoc: LiveLocationRecord | null = selectedVehicleId
+    ? (selectedLocation ?? selectedInList)
+    : null;
+
+  const displayLat = activeLoc?.structured?.locs?.lat ?? 0;
+  const displayLng = activeLoc?.structured?.locs?.lng ?? 0;
+  const currentRouteIndex = activeLoc?.routeIndex ?? 0;
+
+  // ── Trail accumulation ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!activeLoc) return;
     const key = `${displayLat.toFixed(6)},${displayLng.toFixed(6)}`;
     if (lastKeyRef.current === key) return;
     lastKeyRef.current = key;
@@ -971,71 +485,48 @@ const LiveTracking: React.FC = () => {
     setTrail((prev) => {
       const next: LatLngTuple[] = [...prev, [displayLat, displayLng]];
       return next.length > MAX_TRAIL_POINTS
-        ? next.slice(next.length - MAX_TRAIL_POINTS)
+        ? next.slice(-MAX_TRAIL_POINTS)
         : next;
     });
 
-    // Check if we arrived at a station
-    const arrivedIdx = STOPS.findIndex((s) => s.index === simIdx);
+    const arrivedIdx = STOPS.findIndex((s) => s.index === currentRouteIndex);
     if (arrivedIdx !== -1 && arrivedIdx !== lastStopRef.current) {
       lastStopRef.current = arrivedIdx;
-      const stop = STOPS[arrivedIdx];
-      notify(`Arrived at Stop ${arrivedIdx + 1}: ${stop.name || "Station"}`, {
-        type: "info",
-      });
+      notify(
+        `Arrived at Stop ${arrivedIdx + 1}: ${STOPS[arrivedIdx].name || "Station"}`,
+        { type: "info" },
+      );
     }
-  }, [displayLat, displayLng, simIdx, notify]);
+  }, [displayLat, displayLng, currentRouteIndex, STOPS, activeLoc, notify]);
 
-  // ── Real server polling (active in production) ────────────────────────────
+  // ── Reset trail when vehicle changes ─────────────────────────────────────
   useEffect(() => {
-    if (!id) return;
-    const interval = setInterval(() => {
-      refetch().catch(() => {
-        /* handled by react-admin error state */
-      });
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [id, refetch]);
-
-  // ── Derived values ─────────────────────────────────────────────────────────
-  const vehicleIcon = useMemo(() => makeVehicleIcon(), []);
-
-  const stopStatuses = useMemo(
-    () =>
-      STOPS.map((s) =>
-        s.index < simIdx
-          ? "passed"
-          : s.index === simIdx
-            ? "current"
-            : "upcoming",
-      ) as Array<"passed" | "current" | "upcoming">,
-    [simIdx],
-  );
-
-  const nextStop = STOPS.find((s) => s.index > simIdx);
-  const nextStopLabel = nextStop
-    ? `Stop ${STOPS.indexOf(nextStop) + 1} (${nextStop.index - simIdx} pts)`
-    : "Final stop";
-
-  const handleReset = () => {
-    if (simRef.current) clearInterval(simRef.current);
-    setSimIdx(0);
     setTrail([]);
     lastKeyRef.current = null;
     lastStopRef.current = -1;
-    setIsPlaying(true);
-    mapRef.current?.flyTo(
-      [ROUTE_DATA[0].coordinates.latitude, ROUTE_DATA[0].coordinates.longitude],
-      16,
-    );
-  };
+  }, [selectedVehicleId]);
 
-  const handleCenter = () => {
-    mapRef.current?.flyTo([displayLat, displayLng], mapRef.current.getZoom(), {
-      animate: true,
-    });
-  };
+  // ── Stop statuses ─────────────────────────────────────────────────────────
+  const stopStatuses = useMemo(
+    () =>
+      STOPS.map((s) =>
+        s.index < currentRouteIndex
+          ? "passed"
+          : s.index === currentRouteIndex
+            ? "current"
+            : "upcoming",
+      ) as Array<"passed" | "current" | "upcoming">,
+    [STOPS, currentRouteIndex],
+  );
 
+  const cumKm = useMemo(() => buildCumulativeKm(ROUTE_DATA), [ROUTE_DATA]);
+
+  const projectionKm = useMemo(() => {
+    if (!activeLoc || ROUTE_DATA.length === 0) return 0;
+    return getDistanceCovered(displayLat, displayLng, ROUTE_DATA, cumKm);
+  }, [activeLoc, displayLat, displayLng, ROUTE_DATA, cumKm]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const flyToStop = (stop: RoutePoint) => {
     mapRef.current?.flyTo(
       [stop.coordinates.latitude, stop.coordinates.longitude],
@@ -1044,45 +535,43 @@ const LiveTracking: React.FC = () => {
     );
   };
 
-  // ── Loading / error states ────────────────────────────────────────────────
-  if (isLoading && !data && id) {
-    return (
-      <Card sx={{ m: 2 }}>
-        <CardContent>
-          <LinearProgress />
-          <Typography mt={2} color="text.secondary">
-            Loading live location…
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
+  /**
+   * Select a vehicle by id.
+   * Also flies the map to that vehicle's current known position (if available).
+   */
+  const handleSelectVehicle = (vehicleId: string | number | null) => {
+    setSelectedVehicleId(vehicleId);
+    if (!vehicleId) return;
+    const loc = (allLocations ?? []).find((l) => l.id === vehicleId);
+    if (loc) {
+      mapRef.current?.flyTo(
+        [loc?.structured?.locs?.lat, loc?.structured?.locs?.lng],
+        SELECTED_ZOOM,
+        {
+          duration: 1.2,
+        },
+      );
+    }
+  };
+
+  // ── Dropdown options ──────────────────────────────────────────────────────
+  const vehicleOptions = useMemo(
+    () =>
+      (vehicleList ?? []).map((v) => ({
+        label: v.registrationNumber,
+        id: v.id,
+      })),
+    [vehicleList],
+  );
+
+  const isRouteLoading =
+    !!selectedVehicleId && routeLoading && ROUTE_DATA.length === 0;
 
   // ─────────────────────────────────────────────────────────────────────────
-
-  const cumKm = buildCumulativeKm(ROUTE_DATA);
-  // const { projection, stopDistances, nearestStop } = getVehicleRouteInfo(
-  //   displayLat,
-  //   displayLng,
-  //   ROUTE_DATA,
-  //   cumKm,
-  // );
-
-  const vehicleRouteInfo = useMemo(() => {
-    return getDistanceCovered(displayLat, displayLng, ROUTE_DATA, cumKm);
-  }, [displayLat, displayLng, ROUTE_DATA, cumKm]);
-
-  const projectionKm = vehicleRouteInfo;
-
   return (
-    <Card
-      sx={{
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
+    <Card sx={{ height: "100vh", overflow: "hidden" }}>
       <CardContent
-        sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+        sx={{ display: "flex", flexDirection: "column", height: "100%", p: 2 }}
       >
         {/* ── Header ── */}
         <Box
@@ -1092,168 +581,216 @@ const LiveTracking: React.FC = () => {
           mb={1}
         >
           <Typography variant="h5">Live Vehicle Tracking</Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <FormControlLabel
               control={
                 <Switch
                   checked={follow}
                   onChange={() => setFollow((x) => !x)}
+                  disabled={!activeLoc}
                 />
               }
               label="Follow vehicle"
             />
-            <Button variant="contained">Vehicles Near Me</Button>
-            <Button variant="outlined">Refresh Map</Button>
+            <Button
+              variant="outlined"
+              disabled={!activeLoc}
+              onClick={() =>
+                activeLoc &&
+                mapRef.current?.flyTo(
+                  [
+                    activeLoc?.structured?.locs?.lat,
+                    activeLoc?.structured?.locs?.lng,
+                  ],
+                  mapRef.current.getZoom(),
+                  { animate: true },
+                )
+              }
+            >
+              Center Map
+            </Button>
           </Box>
         </Box>
 
-        {/* ── Horizontal Divider ── */}
         <Divider sx={{ mb: 1 }} />
 
-        {/* ── BODY ── */}
-        <Box
-          sx={{
-            flex: 1,
-            display: "flex",
-            gap: 2,
-            overflow: "hidden",
-          }}
-        >
-          {/* ── SIDEBAR ── */}
+        {/* ── Body ── */}
+        <Box sx={{ flex: 1, display: "flex", gap: 2, overflow: "hidden" }}>
+          {/* ── Sidebar ── */}
           <Box
             sx={{
               width: 400,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
             }}
           >
+            {/* Vehicle selector */}
             <Autocomplete
-              options={[
-                { label: "OD02AB1234", id: 1 },
-                { label: "OD02AB5678", id: 2 },
-              ]}
+              options={vehicleOptions}
+              loading={vehiclesLoading}
+              value={
+                vehicleOptions.find((v) => v.id === selectedVehicleId) ?? null
+              }
+              onChange={(_, val) => handleSelectVehicle(val?.id ?? null)}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
               renderInput={(params) => (
-                <TextField {...params} label="Select Vehicle" size="small" />
+                <TextField
+                  {...params}
+                  label="Select Vehicle"
+                  size="small"
+                  placeholder={vehiclesLoading ? "Loading vehicles…" : ""}
+                />
               )}
             />
 
-            {/* <Box
-              sx={{
-                position: "relative",
-                overflowY: "auto",
-                height: "100%",
-              }}
-            >
+            {/* Empty state */}
+            {!selectedVehicleId && (
               <Box
                 sx={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 3fr 1fr",
-                  gap: 1,
-                  pt: 2,
+                  mt: 4,
+                  textAlign: "center",
+                  color: "text.secondary",
+                  px: 2,
                 }}
               >
-                <Box>
-                  <Typography sx={{ mb: 2 }}>Arrival</Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ mb: 2 }}>Stop/Station</Typography>
-                </Box>
-                <Box>
-                  <Typography sx={{ mb: 2 }}>Departure</Typography>
-                </Box>
+                <Typography variant="h6">No Vehicle Selected</Typography>
+                <Typography variant="body2" mt={0.5}>
+                  Select a vehicle from the list above or click any bus on the
+                  map to see its route and live progress.
+                </Typography>
               </Box>
-              {/* Stop list */}
-            {/* {STOPS.map((stop, i) => (
-                <StopItem
-                  key={stop.index}
-                  stop={stop}
-                  index={i}
-                  status={stopStatuses[i]}
-                  isFirst={i === 0}
-                  isLast={i === STOPS.length - 1}
-                  cummulativeDistance={stop.cumulative_km ?? 0}
-                  nextStopLen={
-                    i === STOPS.length - 1 ? 0 : (STOPS[i + 1].segment_km ?? 0)
-                  }
-                  maxStopLen={LONGEST_STOP.segment_km ?? 0}
-                  vehicleProjection={projectionKm}
-                  onClick={() => flyToStop(stop)}
-                />
-              ))} */}
-            {/* </Box> */}
+            )}
 
-            {/* Empty list */}
-            <Box
-              sx={{
-                mt: 1,
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <img src={route_map_img} alt="Route Map Image" width="200" />
-              <Typography variant="h6">No Vehicle Selected</Typography>
-              <Typography>
-                Select any vehicle to see its route and more details.
+            {/* Route loading spinner */}
+            {isRouteLoading && (
+              <Box sx={{ mt: 2 }}>
+                <LinearProgress />
+                <Typography mt={1} variant="body2" color="text.secondary">
+                  Loading route data…
+                </Typography>
+              </Box>
+            )}
+
+            {/* Route error */}
+            {routeError && selectedVehicleId && !routeLoading && (
+              <Typography color="error" mt={2} variant="body2">
+                Could not load route for this vehicle.
               </Typography>
-            </Box>
+            )}
+
+            {/* Speed / heading chips */}
+            {/* {activeLoc && (
+              <Box sx={{ display: "flex", gap: 1, mt: 1, flexWrap: "wrap" }}>
+                {activeLoc.speed !== undefined && (
+                  <Chip
+                    label={`🚌 ${activeLoc.speed.toFixed(1)} km/h`}
+                    size="small"
+                  />
+                )}
+                {activeLoc.heading !== undefined && (
+                  <Chip
+                    label={`🧭 ${activeLoc.heading.toFixed(0)}°`}
+                    size="small"
+                  />
+                )}
+              </Box>
+            )} */}
+
+            {/* Stop list */}
+            {!isRouteLoading && STOPS.length > 0 && (
+              <Box sx={{ flex: 1, overflowY: "auto", mt: 1 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 3fr 1fr",
+                    gap: 1,
+                    pt: 1,
+                    mb: 1,
+                  }}
+                >
+                  <Typography variant="caption">Arrival</Typography>
+                  <Typography variant="caption">Stop / Station</Typography>
+                  <Typography variant="caption">Departure</Typography>
+                </Box>
+
+                {STOPS.map((stop, i) => (
+                  <StopItem
+                    key={stop.index}
+                    stop={stop}
+                    index={i}
+                    status={stopStatuses[i]}
+                    isFirst={i === 0}
+                    isLast={i === STOPS.length - 1}
+                    cummulativeDistance={stop.cumulative_km ?? 0}
+                    nextStopLen={
+                      i === STOPS.length - 1
+                        ? 0
+                        : (STOPS[i + 1].segment_km ?? 0)
+                    }
+                    maxStopLen={LONGEST_STOP?.segment_km ?? 1}
+                    vehicleProjection={projectionKm}
+                    onClick={() => flyToStop(stop)}
+                  />
+                ))}
+              </Box>
+            )}
           </Box>
 
-          {/* ── MAP ── */}
+          {/* ── Map ── */}
           <Box sx={{ flex: 1, position: "relative" }}>
             <MapContainer
-              center={[displayLat, displayLng]}
-              zoom={18}
+              center={DEFAULT_CENTER}
+              zoom={DEFAULT_ZOOM}
               style={{ height: "100%", width: "100%", minHeight: 600 }}
+              ref={mapRef}
             >
-              {/* Satellite imagery */}
+              {/* Satellite base */}
               <TileLayer
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 attribution="Tiles © Esri"
                 maxZoom={18}
               />
-
-              {/* labels layer */}
+              {/* Label overlay */}
               <TileLayer
                 url="https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}"
                 attribution="Google"
                 maxZoom={18}
               />
 
-              {/* Full planned route */}
-              <Polyline
-                positions={FULL_PATH}
-                pathOptions={{
-                  color: "rgb(255, 255, 255)",
-                  weight: 3,
-                  dashArray: "7,6",
-                }}
-              />
+              {/* ── SELECTED VEHICLE ONLY: planned route ── */}
+              {FULL_PATH.length > 1 && (
+                <Polyline
+                  positions={FULL_PATH}
+                  pathOptions={{ color: "#fff", weight: 3, dashArray: "7,6" }}
+                />
+              )}
 
-              {/* Travelled trail */}
+              {/* ── SELECTED VEHICLE ONLY: travelled trail ── */}
               {trail.length > 1 && (
                 <>
                   <Polyline
                     positions={trail}
-                    pathOptions={{ color: "white", weight: 5, opacity: 1.0 }}
+                    pathOptions={{ color: "white", weight: 5, opacity: 1 }}
                   />
                   <Polyline
                     positions={trail}
-                    pathOptions={{ color: "#44307C", weight: 4, opacity: 1.0 }}
+                    pathOptions={{ color: "#44307C", weight: 4, opacity: 1 }}
                   />
                 </>
               )}
 
-              {/* Station markers */}
+              {/* ── SELECTED VEHICLE ONLY: stop markers ── */}
               {STOPS.map((stop, i) => {
-                const status = stopStatuses[i];
                 const color =
-                  status === "passed"
+                  stopStatuses[i] === "passed"
                     ? "#a8ff3e"
-                    : status === "current"
+                    : stopStatuses[i] === "current"
                       ? "#00e5ff"
                       : "#ffcd00";
                 return (
                   <Marker
-                    key={stop.index}
+                    key={`stop-${stop.index}`}
                     position={[
                       stop.coordinates.latitude,
                       stop.coordinates.longitude,
@@ -1261,24 +798,23 @@ const LiveTracking: React.FC = () => {
                     icon={makeStopIcon(String(i + 1), color)}
                   >
                     <Popup>
-                      <Box sx={{ minWidth: 180 }}>
+                      <Box sx={{ minWidth: 160 }}>
                         <Typography
                           sx={{
                             fontWeight: 700,
                             color: "#8167e8",
                             fontSize: 13,
-                            mb: 0.5,
                           }}
                         >
                           Stop {i + 1}
                         </Typography>
                         <Typography
                           sx={{
-                            fontSize: 16,
+                            fontSize: 15,
                             color: "#8167e8",
-                            mb: 0.75,
-                            lineHeight: 1.4,
                             fontWeight: 600,
+                            lineHeight: 1.4,
+                            mt: 0.5,
                           }}
                         >
                           {stop.name || `Station ${i + 1}`}
@@ -1290,9 +826,9 @@ const LiveTracking: React.FC = () => {
                             mt: 1,
                             height: 18,
                             fontSize: 9,
-                            bgcolor: "rgba(93, 0, 255, 0.12)",
+                            bgcolor: "rgba(93,0,255,0.12)",
                             color: "#6e2ed5",
-                            border: "1px solid rgba(72, 0, 255, 0.3)",
+                            border: "1px solid rgba(72,0,255,0.3)",
                           }}
                         />
                       </Box>
@@ -1301,34 +837,83 @@ const LiveTracking: React.FC = () => {
                 );
               })}
 
-              {/* Vehicle marker */}
-              <Marker
-                position={[displayLat, displayLng]}
-                icon={vehicleIcon}
-                zIndexOffset={1000}
-              >
-                <Popup>
-                  <Box>
-                    <Typography
-                      sx={{
-                        fontSize: 16,
-                        color: "#8167e8",
-                        mb: 0.75,
-                        lineHeight: 1.4,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Bus
-                    </Typography>
-                  </Box>
-                </Popup>
-              </Marker>
+              {/* ── ALL VEHICLES: bus markers (always on map) ── */}
+              {(allLocations ?? []).map((loc) => {
+                // const isSelected = loc.id === selectedVehicleId;
+                const isSelected = true;
+                return (
+                  <Marker
+                    key={`vehicle-${loc.id}`}
+                    position={[
+                      loc?.structured?.locs?.lat,
+                      loc?.structured?.locs?.lng,
+                    ]}
+                    icon={makeVehicleIcon(isSelected)}
+                    zIndexOffset={isSelected ? 1000 : 0}
+                    eventHandlers={{
+                      // Clicking any bus marker selects that vehicle
+                      click: () => handleSelectVehicle(loc.id),
+                    }}
+                  >
+                    {/* <Popup>
+                      <Box sx={{ minWidth: 150 }}>
+                        <Typography
+                          sx={{
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: "#8167e8",
+                          }}
+                        >
+                          {loc.label ?? `Vehicle ${loc.id}`}
+                        </Typography>
+                        {loc.speed !== undefined && (
+                          <Typography sx={{ fontSize: 12, mt: 0.5 }}>
+                            Speed: {loc.speed.toFixed(1)} km/h
+                          </Typography>
+                        )}
+                        {loc.heading !== undefined && (
+                          <Typography sx={{ fontSize: 12 }}>
+                            Heading: {loc.heading.toFixed(0)}°
+                          </Typography>
+                        )}
+                        {!isSelected && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            sx={{ mt: 1, fontSize: 11 }}
+                            onClick={() => handleSelectVehicle(loc.id)}
+                          >
+                            Track this vehicle
+                          </Button>
+                        )}
+                        {isSelected && (
+                          <Chip
+                            label="● TRACKING"
+                            size="small"
+                            sx={{
+                              mt: 1,
+                              height: 18,
+                              fontSize: 9,
+                              bgcolor: "rgba(68,48,124,0.12)",
+                              color: "#44307c",
+                              border: "1px solid rgba(68,48,124,0.3)",
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Popup> */}
+                  </Marker>
+                );
+              })}
 
-              <MapController
-                lat={displayLat}
-                lng={displayLng}
-                follow={follow}
-              />
+              {/* Follow the selected vehicle */}
+              {activeLoc && (
+                <MapController
+                  lat={displayLat}
+                  lng={displayLng}
+                  follow={follow}
+                />
+              )}
             </MapContainer>
           </Box>
         </Box>

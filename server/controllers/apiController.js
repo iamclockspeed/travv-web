@@ -208,19 +208,30 @@ exports.operatorDashboardStats = async (req, res) => {
   }
 };
 
-exports.getLocations = async (req, res) => {
+exports.getLive = async (req, res) => {
   try {
-    const device = await Device.find({ imei: "353691842147323" });
+    const operatorId = req.user.id;
 
-    const latlng = device[0].raw.state.reported.latlng;
+    const range = JSON.parse(req.query.range);
 
-    const [lat, lng] = latlng.split(",").map(Number);
+    const vehicles = await Vehicle.find({ "operator.id": operatorId }).populate(
+      "device.id",
+    );
 
-    const data = {
-      id: 1,
-      lat: lat,
-      lng: lng,
-    };
+    const data = [];
+
+    vehicles.forEach((vehicle) => {
+      data.push({
+        id: vehicle._id,
+        structured: vehicle.device.id.structured,
+      });
+    });
+
+    res.setHeader(
+      "Content-Range",
+      `vehicles ${range[0]}-${range[1]}/${data.length}`,
+    );
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
     return res.json(data);
   } catch (err) {

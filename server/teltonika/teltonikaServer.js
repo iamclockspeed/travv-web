@@ -25,7 +25,7 @@ class TeltonikaServer extends EventEmitter {
         if (buffer.length === 17 && buffer[1] === 15) {
           const deviceIMEI = buffer.subarray(2, 17).toString("utf-8");
 
-          if (this.isDBConnected()) return;
+          if (!this.isDBConnected()) return;
 
           if (this.approvedDevices.has(deviceIMEI)) {
             socket.deviceIMEI = deviceIMEI;

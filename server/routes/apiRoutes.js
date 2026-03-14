@@ -15,13 +15,13 @@ router.post(API_VERSION + "/operator/login", apiController.operatorLogin);
 router.get(
   API_VERSION + "/operator/userInfo",
   verifyOperatorToken,
-  apiController.getOperatorUserInfo
+  apiController.getOperatorUserInfo,
 );
 
 router.put(
   API_VERSION + "/operator/changePassword",
   verifyOperatorToken,
-  apiController.updateOperatorPassword
+  apiController.updateOperatorPassword,
 );
 
 // Operators Supports Implementations
@@ -29,7 +29,7 @@ router.put(
 router.post(
   API_VERSION + "/operator/support",
   verifyOperatorToken,
-  apiController.createSupport
+  apiController.createSupport,
 );
 
 // Operators Feedbacks Implementations
@@ -37,7 +37,7 @@ router.post(
 router.post(
   API_VERSION + "/operator/feedback",
   verifyOperatorToken,
-  apiController.createFeedback
+  apiController.createFeedback,
 );
 
 // Operators Dashboard Stats Implementations
@@ -45,19 +45,19 @@ router.post(
 router.get(
   API_VERSION + "/operator/dash-stats",
   verifyOperatorToken,
-  apiController.operatorDashboardStats
+  apiController.operatorDashboardStats,
 );
 
 router.get(
-  API_VERSION + "/operator/locations",
+  API_VERSION + "/operator/live",
   verifyOperatorToken,
-  apiController.getLocations
+  apiController.getLive,
 );
 
 router.get(
   API_VERSION + "/operator/totalVehicles",
   verifyOperatorToken,
-  apiController.totalVehicles
+  apiController.totalVehicles,
 );
 
 // --------- Admin APIS ------------
@@ -69,43 +69,43 @@ router.post(API_VERSION + "/admin/login", apiController.adminLogin);
 router.get(
   API_VERSION + "/admin/operators/count",
   verifyAdminToken,
-  apiController.countOperators
+  apiController.countOperators,
 );
 
 router.get(
   API_VERSION + "/admin/operators",
   verifyAdminToken,
-  apiController.listOperators
+  apiController.listOperators,
 );
 
 router.get(
   API_VERSION + "/admin/operators/:id",
   verifyAdminToken,
-  apiController.getOperator
+  apiController.getOperator,
 );
 
 router.post(
   API_VERSION + "/admin/operators",
   verifyAdminToken,
-  apiController.createOperator
+  apiController.createOperator,
 );
 
 router.put(
   API_VERSION + "/admin/operators/:id",
   verifyAdminToken,
-  apiController.updateOperator
+  apiController.updateOperator,
 );
 
 router.delete(
   API_VERSION + "/admin/operators/:id",
   verifyAdminToken,
-  apiController.deleteOperator
+  apiController.deleteOperator,
 );
 
 router.post(
   API_VERSION + "/admin/operators/comdocs/upload",
   verifyAdminToken,
-  apiController.uploadOperatorsComdocs
+  apiController.uploadOperatorsComdocs,
 );
 
 // Vehicles Implementations
@@ -113,49 +113,49 @@ router.post(
 router.get(
   API_VERSION + "/admin/vehicles/count",
   verifyAdminToken,
-  apiController.countVehicles
+  apiController.countVehicles,
 );
 
 router.get(
   API_VERSION + "/admin/vehicles",
   verifyAdminToken,
-  apiController.listVehicles
+  apiController.listVehicles,
 );
 
 router.get(
   API_VERSION + "/admin/vehicles/:id",
   verifyAdminToken,
-  apiController.getVehicle
+  apiController.getVehicle,
 );
 
 router.post(
   API_VERSION + "/admin/vehicles",
   verifyAdminToken,
-  apiController.createVehicle
+  apiController.createVehicle,
 );
 
 router.put(
   API_VERSION + "/admin/vehicles/:id",
   verifyAdminToken,
-  apiController.updateVehicle
+  apiController.updateVehicle,
 );
 
 router.delete(
   API_VERSION + "/admin/vehicles/:id",
   verifyAdminToken,
-  apiController.deleteVehicle
+  apiController.deleteVehicle,
 );
 
 router.post(
   API_VERSION + "/admin/vehicles/docs/upload",
   verifyAdminToken,
-  apiController.uploadVehiclesDocs
+  apiController.uploadVehiclesDocs,
 );
 
 router.post(
   API_VERSION + "/admin/vehicles/images/upload",
   verifyAdminToken,
-  apiController.uploadVehiclesImages
+  apiController.uploadVehiclesImages,
 );
 
 // Devices Implementations
@@ -163,37 +163,37 @@ router.post(
 router.get(
   API_VERSION + "/admin/devices/count",
   verifyAdminToken,
-  apiController.countDevices
+  apiController.countDevices,
 );
 
 router.get(
   API_VERSION + "/admin/devices",
   verifyAdminToken,
-  apiController.listDevices
+  apiController.listDevices,
 );
 
 router.get(
   API_VERSION + "/admin/devices/:id",
   verifyAdminToken,
-  apiController.getDevice
+  apiController.getDevice,
 );
 
 router.post(
   API_VERSION + "/admin/devices",
   verifyAdminToken,
-  apiController.createDevice
+  apiController.createDevice,
 );
 
 router.put(
   API_VERSION + "/admin/devices/:id",
   verifyAdminToken,
-  apiController.updateDevice
+  apiController.updateDevice,
 );
 
 router.delete(
   API_VERSION + "/admin/devices/:id",
   verifyAdminToken,
-  apiController.deleteDevice
+  apiController.deleteDevice,
 );
 
 // Feedbacks Implementations
@@ -201,7 +201,7 @@ router.delete(
 router.get(
   API_VERSION + "/admin/feedbacks",
   verifyAdminToken,
-  apiController.listFeedbacks
+  apiController.listFeedbacks,
 );
 
 // Supports Implementations
@@ -209,7 +209,7 @@ router.get(
 router.get(
   API_VERSION + "/admin/supports",
   verifyAdminToken,
-  apiController.listSupports
+  apiController.listSupports,
 );
 
 // Others Implementations

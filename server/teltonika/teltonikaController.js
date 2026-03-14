@@ -86,7 +86,6 @@ class TeltonikaController {
     await DeviceMessage.create({
       meta: meta,
       body: {
-        structured: structured,
         raw: payload,
       },
     });
@@ -97,6 +96,16 @@ class TeltonikaController {
     const structured = prevState?.structured ?? {};
     structured.safety ||= {};
     structured.safety.alerts ||= [];
+    structured.locs ||= {};
+
+    // Device Location Data
+    structured.locs.timestamp = payload?.state?.reported?.ts;
+    const [lat, lng] = payload?.state?.reported?.latlng
+      ?.split(",")
+      .map(Number) || [0.0, 0.0];
+    structured.locs.lat = lat;
+    structured.locs.lng = lng;
+    structured.locs.alt = payload?.state?.reported?.alt;
 
     // Device Status
     structured.status = this.deviceStatusUpdate(prevState);
