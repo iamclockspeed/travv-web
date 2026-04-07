@@ -9,9 +9,8 @@ const supportSchema = new mongoose.Schema(
     },
     category: { type: String, required: true },
     message: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Support", supportSchema);

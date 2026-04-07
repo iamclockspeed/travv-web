@@ -13,21 +13,14 @@ const deviceSchema = new mongoose.Schema(
       enum: ["GPS"],
       default: "GPS",
     },
-    vehicle: {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle" },
-      registrationNumber: { type: String },
-      assignedAt: { type: Date, default: Date.now },
+    vehicle: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle" },
+    structuredTrackingData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+      alias: "std",
     },
-    alreadyInUse: {
-      type: Boolean,
-      default: false,
-    },
-    installedOn: { type: Date, default: Date.now },
-    lastSeenAt: { type: Date },
-    structured: { type: mongoose.Schema.Types.Mixed, default: null },
-    raw: { type: mongoose.Schema.Types.Mixed, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Device", deviceSchema);

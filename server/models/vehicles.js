@@ -49,17 +49,10 @@ const vehicleSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
-    device: {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Device" },
-      deviceId: { type: String },
-      assignedAt: { type: Date, default: Date.now },
-    },
-    operator: {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: "Operator" },
-      assignedAt: { type: Date, default: Date.now },
-    },
+    device: { type: mongoose.Schema.Types.ObjectId, ref: "Device" },
+    operator: { type: mongoose.Schema.Types.ObjectId, ref: "Operator" },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Vehicle", vehicleSchema);

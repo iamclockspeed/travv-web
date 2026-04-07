@@ -148,8 +148,8 @@ exports.operatorDashboardStats = async (req, res) => {
   try {
     const operatorId = req.user.id;
 
-    const vehicles = await Vehicle.find({ "operator.id": operatorId }).populate(
-      "device.id",
+    const vehicles = await Vehicle.find({ operator: operatorId }).populate(
+      "device",
     );
 
     const totalVehicles = vehicles.length;
@@ -161,15 +161,14 @@ exports.operatorDashboardStats = async (req, res) => {
     let violategeofence = 0;
 
     vehicles.forEach((vehicle) => {
-      const status = vehicle.device.id.structured?.status ?? "";
-      const crashReport =
-        vehicle.device.id.structured?.safety?.crashDetected ?? false;
+      const status = vehicle.device.std?.status ?? "";
+      const crashReport = vehicle.device.std?.safety?.crashDetected ?? false;
 
       const overspeedingReport =
-        vehicle.device.id.structured?.safety?.overspeeding ?? false;
+        vehicle.device.std?.safety?.overspeeding ?? false;
 
       const violategeofenceReport =
-        vehicle.device.id.structured?.safety?.violategeofence ?? false;
+        vehicle.device.std?.safety?.violategeofence ?? false;
 
       if (status == "active") {
         activeVehicles += 1;
@@ -214,8 +213,8 @@ exports.getLive = async (req, res) => {
 
     const range = JSON.parse(req.query.range);
 
-    const vehicles = await Vehicle.find({ "operator.id": operatorId }).populate(
-      "device.id",
+    const vehicles = await Vehicle.find({ operator: operatorId }).populate(
+      "device",
     );
 
     const data = [];
@@ -223,7 +222,7 @@ exports.getLive = async (req, res) => {
     vehicles.forEach((vehicle) => {
       data.push({
         id: vehicle._id,
-        structured: vehicle.device.id.structured,
+        std: vehicle.device.std,
       });
     });
 
@@ -258,7 +257,7 @@ exports.totalVehicles = async (req, res) => {
 
       if (key === "vehicle") {
         vehicleFilter[key] = value;
-      } else if (key.toLowerCase().includes("structured")) {
+      } else if (key.toLowerCase().includes("std")) {
         structuredFilter[key] = value;
       } else {
         otherFilter[key] = value;
@@ -266,7 +265,7 @@ exports.totalVehicles = async (req, res) => {
     }
 
     const queryFilter = {
-      "operator.id": operatorId,
+      operator: operatorId,
     };
 
     const search = vehicleFilter?.vehicle?.trim();
@@ -284,10 +283,10 @@ exports.totalVehicles = async (req, res) => {
 
     const vehicles = await Vehicle.find(queryFilter)
       .populate({
-        path: "device.id",
+        path: "device",
         match: { ...structuredFilter },
       })
-      .populate("operator.id")
+      .populate("operator")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -486,39 +485,19 @@ exports.createVehicle = async (req, res) => {
     if (deviceId) {
       device = await Device.findById(deviceId);
       if (!device) throw new Error("Device not found");
-      if (device.alreadyInUse) throw new Error("Device already in use");
+      if (device.vehicle) throw new Error("Device already in use");
     }
 
     const vehicle = new Vehicle({
       ...vehicleData,
-      operator: operatorId
-        ? {
-            id: operatorId,
-            assignedAt: new Date(),
-          }
-        : {
-            assignedAt: new Date(),
-          },
-      device: device
-        ? {
-            id: device._id,
-            deviceId: device.deviceId,
-            assignedAt: new Date(),
-          }
-        : {
-            assignedAt: new Date(),
-          },
+      operator: operatorId,
+      device: deviceId,
     });
 
     await vehicle.save();
 
     if (device) {
-      device.alreadyInUse = true;
-      device.vehicle = {
-        id: vehicle._id,
-        registrationNumber: vehicle.registrationNumber,
-        assignedAt: new Date(),
-      };
+      device.vehicle = vehicle._id;
       await device.save();
     }
 
@@ -535,7 +514,7 @@ exports.countVehicles = async (req, res) => {
     const total = await Vehicle.countDocuments();
 
     const active = await Device.countDocuments({
-      "structured.status": "active",
+      "std.status": "active",
     });
 
     return res.json({

@@ -9,9 +9,8 @@ const feedbackSchema = new mongoose.Schema(
     },
     rating: { type: Number, required: true },
     message: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Feedback", feedbackSchema);
