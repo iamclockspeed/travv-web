@@ -538,6 +538,8 @@ exports.listVehicles = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const vehicles = await Vehicle.find(filter)
+      .populate("device")
+      .populate("operator")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -560,7 +562,10 @@ exports.listVehicles = async (req, res) => {
 
 exports.getVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id);
+    const vehicle = await Vehicle.findById(req.params.id)
+      .populate("device")
+      .populate("operator");
+
     if (!vehicle) return res.status(404).json({ error: "Not found" });
 
     const data = { id: vehicle._id, ...vehicle.toObject() };
@@ -582,17 +587,10 @@ exports.updateVehicle = async (req, res) => {
       Object.prototype.toString.call(deviceId) !== "[object Object]" &&
       deviceId !== undefined
     ) {
-      if (
-        vehicle.device &&
-        vehicle.device.id &&
-        vehicle.device.id.toString() !== deviceId
-      ) {
-        const oldDevice = await Device.findById(vehicle.device.id);
+      if (vehicle.device && vehicle.device.toString() !== deviceId) {
+        const oldDevice = await Device.findById(vehicle.device);
         if (oldDevice) {
-          oldDevice.alreadyInUse = false;
-          oldDevice.vehicle = {
-            assignedAt: new Date(),
-          };
+          oldDevice.vehicle = null;
           await oldDevice.save();
         }
       }
@@ -600,25 +598,14 @@ exports.updateVehicle = async (req, res) => {
       if (deviceId) {
         const newDevice = await Device.findById(deviceId);
         if (!newDevice) throw new Error("Device not found");
-        if (newDevice.alreadyInUse) throw new Error("Device already in use");
+        if (newDevice.vehicle) throw new Error("Device already in use");
 
-        vehicle.device = {
-          id: newDevice._id,
-          deviceId: newDevice.deviceId,
-          assignedAt: new Date(),
-        };
+        vehicle.device = newDevice._id;
 
-        newDevice.alreadyInUse = true;
-        newDevice.vehicle = {
-          id: vehicle._id,
-          registrationNumber: vehicle.registrationNumber,
-          assignedAt: new Date(),
-        };
+        newDevice.vehicle = vehicle._id;
         await newDevice.save();
       } else {
-        vehicle.device = {
-          assignedAt: new Date(),
-        };
+        vehicle.device = null;
       }
     }
 
@@ -626,10 +613,7 @@ exports.updateVehicle = async (req, res) => {
       operatorId &&
       Object.prototype.toString.call(operatorId) !== "[object Object]"
     ) {
-      vehicle.operator = {
-        id: operatorId,
-        assignedAt: new Date(),
-      };
+      vehicle.operator = operatorId;
     }
 
     Object.assign(vehicle, updateData);
@@ -722,8 +706,7 @@ exports.createDevice = async (req, res) => {
     const data = {
       id: device._id,
       ...device.toObject(),
-      lastSeenAt: Date.now(),
-      structured: { status: "offline" },
+      structuredTrackingData: { status: "offline" },
     };
 
     return res.status(201).json(data);
@@ -735,7 +718,9 @@ exports.createDevice = async (req, res) => {
 exports.countDevices = async (req, res) => {
   try {
     const total = await Device.countDocuments();
-    const used = await Device.countDocuments({ alreadyInUse: true });
+    const used = await Device.countDocuments({
+      vehicle: { $ne: null, $exists: true },
+    });
 
     return res.json({
       ok: true,

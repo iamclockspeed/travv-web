@@ -41,7 +41,6 @@ export const DeviceList = () => (
       <TextField source="manufacturer" />
       <TextField source="firmwareVersion" />
       <TextField source="type" />
-      <TextField source="alreadyInUse" />
       <EditButton />
       <DeleteButton mutationMode="pessimistic" />
     </Datagrid>
@@ -105,7 +104,6 @@ export const DeviceShow = () => (
       <TextField source="manufacturer" />
       <TextField source="firmwareVersion" />
       <TextField source="type" />
-      <TextField source="alreadyInUse" />
       <TextField source="vehicle.registrationNumber" defaultValue="NA" />
     </SimpleShowLayout>
   </Show>

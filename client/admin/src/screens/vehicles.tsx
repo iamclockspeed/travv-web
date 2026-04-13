@@ -58,7 +58,7 @@ export const VehicleList = () => (
         label="Device ID / Serial no"
         defaultValue="NA"
       />
-      <TextField source="operator.id" label="Operator ID" defaultValue="NA" />
+      <TextField source="operator._id" label="Operator ID" defaultValue="NA" />
       <EditButton />
       <DeleteButton mutationMode="pessimistic" />
     </Datagrid>
@@ -75,7 +75,7 @@ export const VehicleCreate = () => {
       const response = await dataProvider.getList("devices", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "deviceId", order: "ASC" },
-        filter: { alreadyInUse: false },
+        filter: { vehicle: null },
       });
       return response.data;
     },
@@ -210,7 +210,7 @@ export const VehicleEdit = () => {
       const response = await dataProvider.getList("devices", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "deviceId", order: "ASC" },
-        filter: { alreadyInUse: false },
+        filter: { vehicle: null },
       });
       return response.data;
     },
@@ -378,7 +378,7 @@ export const VehicleShow = () => (
         label="Device ID / Serial no"
         defaultValue="NA"
       />
-      <TextField source="operator.id" label="Operator ID" defaultValue="NA" />
+      <TextField source="operator._id" label="Operator ID" defaultValue="NA" />
       <ArrayField source="documents">
         <Datagrid bulkActionButtons={false} rowClick={false}>
           <FileWithHost
