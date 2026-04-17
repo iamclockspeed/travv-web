@@ -4,6 +4,7 @@ const Operator = require("../models/operators");
 const Vehicle = require("../models/vehicles");
 const Device = require("../models/devices");
 const DeviceMessage = require("../models/devicemessage");
+const VehicleRoute = require("../models/vehicleroute");
 const Feedback = require("../models/feedbacks");
 const Support = require("../models/supports");
 const multer = require("multer");
@@ -794,6 +795,107 @@ exports.updateDevice = async (req, res) => {
 exports.deleteDevice = async (req, res) => {
   try {
     await Device.findByIdAndDelete(req.params.id);
+    return res.json({ message: "Deleted successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// Routes Implementations
+
+exports.createVRoute = async (req, res) => {
+  try {
+    const vRoute = new VehicleRoute(req.body);
+
+    await vRoute.save();
+
+    const data = {
+      id: vRoute._id,
+      ...vRoute.toObject(),
+    };
+
+    return res.status(201).json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+exports.countVRoutes = async (req, res) => {
+  try {
+    const total = await VehicleRoute.countDocuments();
+
+    return res.json({
+      ok: true,
+      total,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getVRoute = async (req, res) => {
+  try {
+    const vRoute = await VehicleRoute.findById(req.params.id);
+    if (!vRoute) return res.status(404).json({ error: "Not found" });
+
+    const data = { id: vRoute._id, ...vRoute.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.listVRoutes = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const vRoutes = await VehicleRoute.find(filter)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await VehicleRoute.countDocuments();
+
+    const data = vRoutes.map((op) => ({
+      id: op._id,
+      ...op.toObject(),
+    }));
+
+    res.setHeader("Content-Range", `devices ${range[0]}-${range[1]}/${total}`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateVRoute = async (req, res) => {
+  try {
+    const vRoute = await VehicleRoute.findById(req.params.id);
+    if (!vRoute) return res.status(404).json({ error: "Not found" });
+
+    Object.assign(vRoute, req.body);
+
+    await vRoute.save();
+
+    const data = { id: vRoute._id, ...vRoute.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteVRoute = async (req, res) => {
+  try {
+    await VehicleRoute.findByIdAndDelete(req.params.id);
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });

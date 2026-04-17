@@ -10,7 +10,7 @@ import simpleRestProvider from "ra-data-simple-rest";
 
 const httpClient = (
   url: string,
-  options: fetchUtils.Options = {}
+  options: fetchUtils.Options = {},
 ): Promise<any> => {
   if (!options.headers) {
     options.headers = new Headers({ Accept: "application/json" });
@@ -24,11 +24,11 @@ const httpClient = (
 
 const defaultDataProvider = simpleRestProvider(
   import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL,
-  httpClient
+  httpClient,
 );
 
 const uploadOperatorsDocuments = async (
-  file: File
+  file: File,
 ): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append("file", file);
@@ -40,7 +40,7 @@ const uploadOperatorsDocuments = async (
     {
       method: "POST",
       body: formData,
-    }
+    },
   );
 
   if (!response.json.ok) {
@@ -51,7 +51,7 @@ const uploadOperatorsDocuments = async (
 };
 
 const uploadVehiclesDocuments = async (
-  file: File
+  file: File,
 ): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append("file", file);
@@ -63,7 +63,7 @@ const uploadVehiclesDocuments = async (
     {
       method: "POST",
       body: formData,
-    }
+    },
   );
 
   if (!response.json.ok) {
@@ -84,7 +84,7 @@ const uploadVehiclesImages = async (file: File): Promise<{ url: string }> => {
     {
       method: "POST",
       body: formData,
-    }
+    },
   );
 
   if (!response.json.ok) {
@@ -102,7 +102,7 @@ const processCompanyDocuments = async (documents: any[]) => {
         return { ...doc, url: uploaded.url };
       }
       return doc;
-    })
+    }),
   );
 };
 
@@ -114,7 +114,7 @@ const processVehicleDocuments = async (documents: any[]) => {
         return { ...doc, url: uploaded.url };
       }
       return doc;
-    })
+    }),
   );
 };
 
@@ -126,7 +126,7 @@ const processVehicleImages = async (documents: any[]) => {
         return { ...doc, url: uploaded.url };
       }
       return doc;
-    })
+    }),
   );
 };
 
@@ -136,7 +136,7 @@ const dataProvider: DataProvider = {
   async create(resource: string, params: CreateParams): Promise<CreateResult> {
     if (resource === "operators") {
       const companyDocs = await processCompanyDocuments(
-        params.data.companyDocuments
+        params.data.companyDocuments,
       );
       return defaultDataProvider.create(resource, {
         ...params,
@@ -156,7 +156,7 @@ const dataProvider: DataProvider = {
   async update(resource: string, params: UpdateParams): Promise<UpdateResult> {
     if (resource === "operators") {
       const companyDocs = await processCompanyDocuments(
-        params.data.companyDocuments
+        params.data.companyDocuments,
       );
       return defaultDataProvider.update(resource, {
         ...params,
@@ -193,6 +193,14 @@ const dataProvider: DataProvider = {
     const url = `${
       import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
     }/devices/count`;
+    const response = await httpClient(url);
+    if (!response.json.ok) throw new Error("Network error");
+    return response.json;
+  },
+  getRouteCounts: async () => {
+    const url = `${
+      import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL
+    }/routes/count`;
     const response = await httpClient(url);
     if (!response.json.ok) throw new Error("Network error");
     return response.json;

@@ -51,6 +51,7 @@ const vehicleSchema = new mongoose.Schema(
     ],
     device: { type: mongoose.Schema.Types.ObjectId, ref: "Device" },
     operator: { type: mongoose.Schema.Types.ObjectId, ref: "Operator" },
+    routes: [{ type: mongoose.Schema.Types.ObjectId, ref: "VehicleRoute" }],
   },
   { timestamps: true },
 );

@@ -34,9 +34,16 @@ import {
   DeviceShow,
   DeviceEdit,
 } from "./screens/devices";
+import {
+  VRouteList,
+  VRouteCreate,
+  VRouteShow,
+  VRouteEdit,
+} from "./screens/routes-config";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import DirectionsBusIcon from "@mui/icons-material/DirectionsBus";
 import DevicesIcon from "@mui/icons-material/Devices";
+import RouteIcon from "@mui/icons-material/Route";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 
@@ -140,6 +147,15 @@ const App = () => (
       create={DeviceCreate}
       edit={DeviceEdit}
       show={DeviceShow}
+    />
+
+    <Resource
+      icon={RouteIcon}
+      name="routes"
+      list={VRouteList}
+      create={VRouteCreate}
+      edit={VRouteEdit}
+      show={VRouteShow}
     />
 
     <Resource

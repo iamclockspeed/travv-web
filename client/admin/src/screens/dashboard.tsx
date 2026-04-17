@@ -9,6 +9,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import PersonOffIcon from "@mui/icons-material/PersonOff";
 import DevicesIcon from "@mui/icons-material/Devices";
+import RouteIcon from "@mui/icons-material/Route";
 import UsbIcon from "@mui/icons-material/Usb";
 import UsbOffIcon from "@mui/icons-material/UsbOff";
 
@@ -41,6 +42,11 @@ const Dashboard = () => {
       queryKey: ["deviceCounts"],
       queryFn: () => (dataProvider as any).getDeviceCounts(),
     });
+
+  const { data: vrCounts = { total: 0 } } = useQuery<TypeCounts>({
+    queryKey: ["routeCounts"],
+    queryFn: () => (dataProvider as any).getRouteCounts(),
+  });
 
   return (
     <Card sx={{ height: "100%" }}>
@@ -120,6 +126,19 @@ const Dashboard = () => {
                 v1={dvCounts.unused}
                 v2="Un-used Devices"
                 icon={<UsbOffIcon fontSize="large" />}
+              ></DashCard>
+            </Grid>
+          </Box>
+
+          <Box>
+            <Box>
+              <Typography variant="h6">🟩 Routes</Typography>
+            </Box>
+            <Grid container spacing={2} mt={1}>
+              <DashCard
+                v1={vrCounts.total}
+                v2="Total Routes"
+                icon={<RouteIcon fontSize="large" />}
               ></DashCard>
             </Grid>
           </Box>

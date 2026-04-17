@@ -196,6 +196,44 @@ router.delete(
   apiController.deleteDevice,
 );
 
+// Routes Implementations
+
+router.get(
+  API_VERSION + "/admin/routes/count",
+  verifyAdminToken,
+  apiController.countVRoutes,
+);
+
+router.get(
+  API_VERSION + "/admin/routes",
+  verifyAdminToken,
+  apiController.listVRoutes,
+);
+
+router.get(
+  API_VERSION + "/admin/routes/:id",
+  verifyAdminToken,
+  apiController.getVRoute,
+);
+
+router.post(
+  API_VERSION + "/admin/routes",
+  verifyAdminToken,
+  apiController.createVRoute,
+);
+
+router.put(
+  API_VERSION + "/admin/routes/:id",
+  verifyAdminToken,
+  apiController.updateVRoute,
+);
+
+router.delete(
+  API_VERSION + "/admin/routes/:id",
+  verifyAdminToken,
+  apiController.deleteVRoute,
+);
+
 // Feedbacks Implementations
 
 router.get(
