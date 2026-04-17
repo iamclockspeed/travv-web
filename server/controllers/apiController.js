@@ -253,6 +253,7 @@ exports.totalVehicles = async (req, res) => {
     const otherFilter = {};
 
     for (const [key, value] of Object.entries(filter)) {
+      //ghghghg
       console.log(key);
 
       if (key === "vehicle") {
@@ -298,7 +299,7 @@ exports.totalVehicles = async (req, res) => {
         id: op._id,
         ...op.toObject(),
       }))
-      .filter((op) => op.device.id != null);
+      .filter((op) => op.device != null);
 
     res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
@@ -735,7 +736,7 @@ exports.countDevices = async (req, res) => {
 
 exports.getDevice = async (req, res) => {
   try {
-    const device = await Device.findById(req.params.id);
+    const device = await Device.findById(req.params.id).populate("vehicle");
     if (!device) return res.status(404).json({ error: "Not found" });
 
     const data = { id: device._id, ...device.toObject() };

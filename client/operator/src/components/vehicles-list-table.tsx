@@ -41,20 +41,16 @@ interface Vehicle {
   model: string;
   fuelType: string;
   device: {
-    id: {
-      lastSeenAt?: string;
-      structured?: {
-        status?: string;
-        safety?: {
-          alerts?: VehicleAlert[];
-        };
+    structuredTrackingData?: {
+      locs?: {
+        timestamp: number;
+        lat: number;
+        lng: number;
+        alt: number;
       };
-      raw?: {
-        state?: {
-          reported?: {
-            latlng?: string;
-          };
-        };
+      status?: string;
+      safety?: {
+        alerts?: VehicleAlert[];
       };
     };
   };
@@ -178,8 +174,8 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
   const [tabIndex, setTabIndex] = useState(0);
   const [alertHistory, setAlertHistory] = useState(
-    vehicle.device.id.structured?.safety?.alerts
-      ? vehicle.device.id.structured.safety.alerts
+    vehicle.device.structuredTrackingData?.safety?.alerts
+      ? vehicle.device.structuredTrackingData.safety.alerts
       : [],
   );
 
@@ -224,15 +220,18 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
             </Typography>
             <Typography>
               Status:{" "}
-              <StatusWithIcon status={vehicle.device.id?.structured?.status} />
+              <StatusWithIcon
+                status={vehicle.device?.structuredTrackingData?.status}
+              />
             </Typography>
             <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               Location:
               <IconButton size="large" title="View on Map" sx={{ p: 0.5 }}>
                 <MapIcon fontSize="medium" />
               </IconButton>
-              {vehicle.device.id.raw?.state?.reported?.latlng ??
-                "0.000000,0.000000"}
+              {vehicle.device?.structuredTrackingData?.locs?.lat +
+                ", " +
+                vehicle.device?.structuredTrackingData?.locs?.lng}
             </Typography>
             {vehicle.images.length > 0 && (
               <Box sx={{ pb: 3 }}>
@@ -803,7 +802,7 @@ const StatusWithIcon = ({ status }: { status?: string }) => {
 const AlertsWithBadges = () => {
   const record = useRecordContext<Vehicle>();
   const alerts =
-    record?.device?.id?.structured?.safety?.alerts?.filter(
+    record?.device?.structuredTrackingData?.safety?.alerts?.filter(
       (a) => a?.unhandled,
     ) || [];
   const MAX_VISIBLE_ALERTS = 2;
@@ -856,7 +855,9 @@ const LocationWithLink = () => {
         <MapIcon />
       </IconButton>
       <span>
-        {record.device.id.raw?.state?.reported?.latlng ?? "0.000000,0.000000"}
+        {record.device?.structuredTrackingData?.locs?.lat +
+          ", " +
+          record.device?.structuredTrackingData?.locs?.lng}
       </span>
     </Box>
   ) : null;
@@ -881,9 +882,10 @@ const VehicleTable: React.FC = () => {
     updatedAlerts: VehicleAlert[],
   ) => {
     if (selectedVehicle?.id === vehicleId) {
-      selectedVehicle.device.id.structured ??= {};
-      selectedVehicle.device.id.structured.safety ??= {};
-      selectedVehicle.device.id.structured.safety.alerts = updatedAlerts;
+      selectedVehicle.device.structuredTrackingData ??= {};
+      selectedVehicle.device.structuredTrackingData.safety ??= {};
+      selectedVehicle.device.structuredTrackingData.safety.alerts =
+        updatedAlerts;
 
       setSelectedVehicle({ ...selectedVehicle });
     }
@@ -943,7 +945,9 @@ const VehicleTable: React.FC = () => {
         <FunctionField
           label="Status"
           render={(record) => (
-            <StatusWithIcon status={record.device.id?.structured?.status} />
+            <StatusWithIcon
+              status={record.device?.structuredTrackingData?.status}
+            />
           )}
         />
         <FunctionField label="Alerts" render={() => <AlertsWithBadges />} />

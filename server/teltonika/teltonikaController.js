@@ -24,7 +24,7 @@ class TeltonikaController {
               (Date.now() - ts) / 1000,
             )}s | data: ${JSON.stringify(payload)}`,
           );
-          await this.updateAndStoreData(ts, meta, payload, true);
+          await this.updateAndStoreData(meta, payload, true);
           return;
         } else {
           console.log(
@@ -34,7 +34,7 @@ class TeltonikaController {
           );
         }
 
-        await this.updateAndStoreData(ts, meta, payload);
+        await this.updateAndStoreData(meta, payload);
 
         console.log(`[Teltonika] Saved message from ${deviceIMEI}`);
       } catch (err) {
@@ -49,9 +49,7 @@ class TeltonikaController {
         { imei: meta.deviceIMEI },
         {
           $set: {
-            lastSeenAt: Date.now(),
-            structured: structured,
-            raw: null,
+            structuredTrackingData: structured,
           },
         },
       );
@@ -67,7 +65,7 @@ class TeltonikaController {
     tracker.start();
   }
 
-  async updateAndStoreData(ts, meta, payload, skip_structured = false) {
+  async updateAndStoreData(meta, payload, skip_structured = false) {
     if (!skip_structured) {
       const structured = await this.calculations(meta, payload);
 
@@ -75,9 +73,7 @@ class TeltonikaController {
         { imei: meta.deviceIMEI },
         {
           $set: {
-            lastSeenAt: ts,
-            structured: structured,
-            raw: payload,
+            structuredTrackingData: structured,
           },
         },
       );
@@ -85,27 +81,25 @@ class TeltonikaController {
 
     await DeviceMessage.create({
       meta: meta,
-      body: {
-        raw: payload,
-      },
+      body: payload,
     });
   }
 
   async calculations(meta, payload) {
     const prevState = await Device.findOne({ imei: meta.deviceIMEI });
-    const structured = prevState?.structured ?? {};
+    const structured = prevState?.structuredTrackingData ?? {};
     structured.safety ||= {};
     structured.safety.alerts ||= [];
     structured.locs ||= {};
 
     // Device Location Data
-    structured.locs.timestamp = payload?.state?.reported?.ts;
+    structured.locs.timestamp = payload?.state?.reported?.ts || Date.now();
     const [lat, lng] = payload?.state?.reported?.latlng
       ?.split(",")
       .map(Number) || [0.0, 0.0];
     structured.locs.lat = lat;
     structured.locs.lng = lng;
-    structured.locs.alt = payload?.state?.reported?.alt;
+    structured.locs.alt = payload?.state?.reported?.alt || 0.0;
 
     // Device Status
     structured.status = this.deviceStatusUpdate(prevState);
@@ -148,7 +142,11 @@ class TeltonikaController {
   deviceStatusUpdate(prevState) {
     const now = Date.now();
     const diffInSeconds =
-      (now - new Date(prevState.lastSeenAt).getTime()) / 1000;
+      (now -
+        new Date(
+          prevState?.structuredTrackingData?.locs?.timestamp || now,
+        ).getTime()) /
+      1000;
     if (diffInSeconds <= 5) return "active";
     if (diffInSeconds <= 20) return "idle";
     return "offline";
