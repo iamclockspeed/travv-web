@@ -229,9 +229,11 @@ const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
               <IconButton size="large" title="View on Map" sx={{ p: 0.5 }}>
                 <MapIcon fontSize="medium" />
               </IconButton>
-              {vehicle.device?.structuredTrackingData?.locs?.lat +
+              {(vehicle.device?.structuredTrackingData?.locs?.lat ||
+                "0.00000") +
                 ", " +
-                vehicle.device?.structuredTrackingData?.locs?.lng}
+                (vehicle.device?.structuredTrackingData?.locs?.lng ||
+                  "0.00000")}
             </Typography>
             {vehicle.images.length > 0 && (
               <Box sx={{ pb: 3 }}>
@@ -855,9 +857,9 @@ const LocationWithLink = () => {
         <MapIcon />
       </IconButton>
       <span>
-        {record.device?.structuredTrackingData?.locs?.lat +
+        {(record.device?.structuredTrackingData?.locs?.lat || "0.00000") +
           ", " +
-          record.device?.structuredTrackingData?.locs?.lng}
+          (record.device?.structuredTrackingData?.locs?.lng || "0.00000")}
       </span>
     </Box>
   ) : null;

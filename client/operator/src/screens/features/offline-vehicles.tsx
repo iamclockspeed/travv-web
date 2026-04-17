@@ -4,7 +4,7 @@ const OfflineVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehicles"}
-      filter={{ "structured.status": "offline" }}
+      filter={{ "structuredTrackingData.status": "offline" }}
     />
   );
 };

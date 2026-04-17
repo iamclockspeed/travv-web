@@ -4,7 +4,7 @@ const CrashDetectedVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehicles"}
-      filter={{ "structured.safety.alerts.type": "crash detected" }}
+      filter={{ "structuredTrackingData.safety.alerts.type": "crash detected" }}
     />
   );
 };

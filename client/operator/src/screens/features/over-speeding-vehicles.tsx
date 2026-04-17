@@ -4,7 +4,7 @@ const OverSpeedingVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehicles"}
-      filter={{ "structured.safety.alerts.type": "over speeding" }}
+      filter={{ "structuredTrackingData.safety.alerts.type": "over speeding" }}
     />
   );
 };

@@ -253,12 +253,9 @@ exports.totalVehicles = async (req, res) => {
     const otherFilter = {};
 
     for (const [key, value] of Object.entries(filter)) {
-      //ghghghg
-      console.log(key);
-
       if (key === "vehicle") {
         vehicleFilter[key] = value;
-      } else if (key.toLowerCase().includes("std")) {
+      } else if (key.toLowerCase().includes("structuredtrackingdata")) {
         structuredFilter[key] = value;
       } else {
         otherFilter[key] = value;

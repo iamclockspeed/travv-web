@@ -76,7 +76,7 @@ interface LiveStructuredRecord {
 
 interface LiveLocationRecord {
   id: string | number;
-  structured: LiveStructuredRecord;
+  std: LiveStructuredRecord;
   routeIndex?: number;
 }
 
@@ -471,8 +471,8 @@ const LiveTracking: React.FC = () => {
     ? (selectedLocation ?? selectedInList)
     : null;
 
-  const displayLat = activeLoc?.structured?.locs?.lat ?? 0;
-  const displayLng = activeLoc?.structured?.locs?.lng ?? 0;
+  const displayLat = activeLoc?.std?.locs?.lat ?? 0;
+  const displayLng = activeLoc?.std?.locs?.lng ?? 0;
   const currentRouteIndex = activeLoc?.routeIndex ?? 0;
 
   // ── Trail accumulation ────────────────────────────────────────────────────
@@ -545,7 +545,7 @@ const LiveTracking: React.FC = () => {
     const loc = (allLocations ?? []).find((l) => l.id === vehicleId);
     if (loc) {
       mapRef.current?.flyTo(
-        [loc?.structured?.locs?.lat, loc?.structured?.locs?.lng],
+        [loc?.std?.locs?.lat, loc?.std?.locs?.lng],
         SELECTED_ZOOM,
         {
           duration: 1.2,
@@ -598,10 +598,7 @@ const LiveTracking: React.FC = () => {
               onClick={() =>
                 activeLoc &&
                 mapRef.current?.flyTo(
-                  [
-                    activeLoc?.structured?.locs?.lat,
-                    activeLoc?.structured?.locs?.lng,
-                  ],
+                  [activeLoc?.std?.locs?.lat, activeLoc?.std?.locs?.lng],
                   mapRef.current.getZoom(),
                   { animate: true },
                 )
@@ -844,10 +841,7 @@ const LiveTracking: React.FC = () => {
                 return (
                   <Marker
                     key={`vehicle-${loc.id}`}
-                    position={[
-                      loc?.structured?.locs?.lat,
-                      loc?.structured?.locs?.lng,
-                    ]}
+                    position={[loc?.std?.locs?.lat, loc?.std?.locs?.lng]}
                     icon={makeVehicleIcon(isSelected)}
                     zIndexOffset={isSelected ? 1000 : 0}
                     eventHandlers={{
