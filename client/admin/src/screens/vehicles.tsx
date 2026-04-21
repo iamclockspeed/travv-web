@@ -25,6 +25,7 @@ import {
   Show,
   SimpleShowLayout,
   AutocompleteInput,
+  AutocompleteArrayInput,
   type FileFieldProps,
   useRecordContext,
   FormDataConsumer,
@@ -93,6 +94,17 @@ export const VehicleCreate = () => {
     },
   });
 
+  const { data: routes = [] } = useQuery({
+    queryKey: ["vehicleRoutes"],
+    queryFn: async () => {
+      const response = await dataProvider.getList("routes", {
+        pagination: { page: 1, perPage: 100 },
+        sort: { field: "routeName", order: "ASC" },
+      });
+      return response.data;
+    },
+  });
+
   return (
     <Create resource="vehicles">
       <SimpleForm>
@@ -123,6 +135,12 @@ export const VehicleCreate = () => {
           ]}
           defaultValue="Diesel"
           required
+        />
+        <AutocompleteArrayInput
+          source="routes"
+          choices={routes}
+          optionText="routeName"
+          optionValue="id"
         />
         <AutocompleteInput
           source="device"
@@ -228,6 +246,17 @@ export const VehicleEdit = () => {
     },
   });
 
+  const { data: routes = [] } = useQuery({
+    queryKey: ["vehicleRoutes"],
+    queryFn: async () => {
+      const response = await dataProvider.getList("routes", {
+        pagination: { page: 1, perPage: 100 },
+        sort: { field: "routeName", order: "ASC" },
+      });
+      return response.data;
+    },
+  });
+
   return (
     <Edit resource="vehicles" mutationMode="pessimistic">
       <SimpleForm>
@@ -258,6 +287,12 @@ export const VehicleEdit = () => {
           ]}
           defaultValue="Diesel"
           required
+        />
+        <AutocompleteArrayInput
+          source="routes"
+          choices={routes}
+          optionText="routeName"
+          optionValue="id"
         />
         <AutocompleteInput
           source="device"
@@ -373,6 +408,11 @@ export const VehicleShow = () => (
       <TextField source="make" />
       <TextField source="model" />
       <TextField source="fuelType" />
+      <ArrayField source="routes">
+        <Datagrid bulkActionButtons={false} rowClick={false}>
+          <TextField source="routeName" />
+        </Datagrid>
+      </ArrayField>
       <TextField
         source="device.deviceId"
         label="Device ID / Serial no"

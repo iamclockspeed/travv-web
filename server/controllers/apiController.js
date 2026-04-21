@@ -434,6 +434,10 @@ exports.updateOperator = async (req, res) => {
 
 exports.deleteOperator = async (req, res) => {
   try {
+    await Vehicle.updateMany(
+      { operator: req.params.id },
+      { $set: { operator: null } },
+    );
     await Operator.findByIdAndDelete(req.params.id);
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
@@ -562,6 +566,7 @@ exports.listVehicles = async (req, res) => {
 exports.getVehicle = async (req, res) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id)
+      .populate("routes")
       .populate("device")
       .populate("operator");
 
@@ -629,6 +634,10 @@ exports.updateVehicle = async (req, res) => {
 
 exports.deleteVehicle = async (req, res) => {
   try {
+    await Device.updateMany(
+      { vehicle: req.params.id },
+      { $set: { vehicle: null } },
+    );
     await Vehicle.findByIdAndDelete(req.params.id);
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
@@ -794,6 +803,10 @@ exports.updateDevice = async (req, res) => {
 
 exports.deleteDevice = async (req, res) => {
   try {
+    await Vehicle.updateMany(
+      { device: req.params.id },
+      { $set: { device: null } },
+    );
     await Device.findByIdAndDelete(req.params.id);
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
@@ -805,6 +818,12 @@ exports.deleteDevice = async (req, res) => {
 
 exports.createVRoute = async (req, res) => {
   try {
+    const reqObject = req.body;
+
+    if (reqObject.pathData) {
+      reqObject.pathData = JSON.parse(reqObject.pathData);
+    }
+
     const vRoute = new VehicleRoute(req.body);
 
     await vRoute.save();
@@ -881,6 +900,12 @@ exports.updateVRoute = async (req, res) => {
     const vRoute = await VehicleRoute.findById(req.params.id);
     if (!vRoute) return res.status(404).json({ error: "Not found" });
 
+    const reqObject = req.body;
+
+    if (reqObject.pathData) {
+      reqObject.pathData = JSON.parse(reqObject.pathData);
+    }
+
     Object.assign(vRoute, req.body);
 
     await vRoute.save();
@@ -895,6 +920,10 @@ exports.updateVRoute = async (req, res) => {
 
 exports.deleteVRoute = async (req, res) => {
   try {
+    await Vehicle.updateMany(
+      { routes: req.params.id },
+      { $pull: { routes: req.params.id } },
+    );
     await VehicleRoute.findByIdAndDelete(req.params.id);
     return res.json({ message: "Deleted successfully" });
   } catch (err) {

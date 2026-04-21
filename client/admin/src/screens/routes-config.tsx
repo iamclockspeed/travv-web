@@ -5,7 +5,6 @@ import {
   Create,
   SimpleForm,
   TextInput,
-  SelectInput,
   EditButton,
   DeleteButton,
   TopToolbar,
@@ -16,6 +15,8 @@ import {
   SimpleShowLayout,
   Edit,
 } from "react-admin";
+
+import { JsonField } from "react-admin-json-view";
 
 // ---------- Actions ----------
 const VRouteListActions = () => (
@@ -68,7 +69,10 @@ export const VRouteShow = () => (
     <SimpleShowLayout>
       <TextField source="id" />
       <TextField source="routeName" />
-      <TextField source="pathData" />
+      <JsonField
+        source="pathData"
+        reactJsonOptions={{ collapsed: true, collapseStringsAfterLength: 50 }}
+      />
     </SimpleShowLayout>
   </Show>
 );
