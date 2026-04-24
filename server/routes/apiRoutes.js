@@ -51,7 +51,19 @@ router.get(
 router.get(
   API_VERSION + "/operator/live",
   verifyOperatorToken,
+  apiController.getAllLive,
+);
+
+router.get(
+  API_VERSION + "/operator/live/:id",
+  verifyOperatorToken,
   apiController.getLive,
+);
+
+router.get(
+  API_VERSION + "/operator/routes/:id",
+  verifyOperatorToken,
+  apiController.getOVRoute,
 );
 
 router.get(

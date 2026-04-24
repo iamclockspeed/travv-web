@@ -471,8 +471,8 @@ const LiveTracking: React.FC = () => {
     ? (selectedLocation ?? selectedInList)
     : null;
 
-  const displayLat = activeLoc?.std?.locs?.lat ?? 0;
-  const displayLng = activeLoc?.std?.locs?.lng ?? 0;
+  const displayLat = activeLoc?.std?.locs?.lat ?? 0.0;
+  const displayLng = activeLoc?.std?.locs?.lng ?? 0.0;
   const currentRouteIndex = activeLoc?.routeIndex ?? 0;
 
   // ── Trail accumulation ────────────────────────────────────────────────────
@@ -545,7 +545,7 @@ const LiveTracking: React.FC = () => {
     const loc = (allLocations ?? []).find((l) => l.id === vehicleId);
     if (loc) {
       mapRef.current?.flyTo(
-        [loc?.std?.locs?.lat, loc?.std?.locs?.lng],
+        [loc?.std?.locs?.lat ?? 0.0, loc?.std?.locs?.lng ?? 0.0],
         SELECTED_ZOOM,
         {
           duration: 1.2,
@@ -598,7 +598,10 @@ const LiveTracking: React.FC = () => {
               onClick={() =>
                 activeLoc &&
                 mapRef.current?.flyTo(
-                  [activeLoc?.std?.locs?.lat, activeLoc?.std?.locs?.lng],
+                  [
+                    activeLoc?.std?.locs?.lat ?? 0.0,
+                    activeLoc?.std?.locs?.lng ?? 0.0,
+                  ],
                   mapRef.current.getZoom(),
                   { animate: true },
                 )
@@ -841,7 +844,10 @@ const LiveTracking: React.FC = () => {
                 return (
                   <Marker
                     key={`vehicle-${loc.id}`}
-                    position={[loc?.std?.locs?.lat, loc?.std?.locs?.lng]}
+                    position={[
+                      loc?.std?.locs?.lat ?? 0.0,
+                      loc?.std?.locs?.lng ?? 0.0,
+                    ]}
                     icon={makeVehicleIcon(isSelected)}
                     zIndexOffset={isSelected ? 1000 : 0}
                     eventHandlers={{

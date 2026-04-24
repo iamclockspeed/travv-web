@@ -208,7 +208,7 @@ exports.operatorDashboardStats = async (req, res) => {
   }
 };
 
-exports.getLive = async (req, res) => {
+exports.getAllLive = async (req, res) => {
   try {
     const operatorId = req.user.id;
 
@@ -232,6 +232,38 @@ exports.getLive = async (req, res) => {
       `vehicles ${range[0]}-${range[1]}/${data.length}`,
     );
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getLive = async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id).populate("device");
+
+    const data = {
+      id: vehicle._id,
+      std: vehicle.device.std,
+    };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getOVRoute = async (req, res) => {
+  try {
+    const vRoute = await Vehicle.findById(req.params.id).populate("routes");
+
+    if (!vRoute) return res.status(404).json({ error: "Not found" });
+
+    const data = {
+      id: vRoute.routes[0]._id,
+      points: vRoute.routes[0].pathData.path,
+    };
 
     return res.json(data);
   } catch (err) {
@@ -855,6 +887,9 @@ exports.countVRoutes = async (req, res) => {
 exports.getVRoute = async (req, res) => {
   try {
     const vRoute = await VehicleRoute.findById(req.params.id);
+
+    console.log(vRoute, req.params.id);
+
     if (!vRoute) return res.status(404).json({ error: "Not found" });
 
     const data = { id: vRoute._id, ...vRoute.toObject() };
