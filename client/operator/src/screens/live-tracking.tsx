@@ -401,7 +401,7 @@ const LiveTracking: React.FC = () => {
   // ── 2. ALL live data (all bus markers on map) ────────────────────────
   const { data: allStd, refetch: refetchAllStd } =
     useGetList<VehicleLiveStructuredStats>("liveStd", {
-      pagination: { page: 1, perPage: 500 },
+      pagination: { page: 1, perPage: 100 },
       sort: { field: "id", order: "ASC" },
     });
 
@@ -841,6 +841,9 @@ const LiveTracking: React.FC = () => {
               {/* ── ALL VEHICLES: bus markers (always on map) ── */}
               {(allStd ?? []).map((loc) => {
                 const isSelected = loc.id === selectedVehicleId;
+                const vehicleData = (vehicleList ?? []).find(
+                  (v) => v.id === loc.id,
+                );
                 return (
                   <Marker
                     key={`vehicle-${loc.id}`}
@@ -850,14 +853,15 @@ const LiveTracking: React.FC = () => {
                     ]}
                     icon={makeVehicleIcon(isSelected)}
                     zIndexOffset={isSelected ? 1000 : 0}
-                    eventHandlers={{
-                      // Clicking any bus marker selects that vehicle
-                      click: () => handleSelectVehicle(loc.id),
-                    }}
+                    // eventHandlers={
+                    //   {
+                    //     // click: () => handleSelectVehicle(loc.id),
+                    //   }
+                    // }
                   >
-                    {/* <Popup>
+                    <Popup>
                       <Box sx={{ minWidth: 150 }}>
-                        <Typography
+                        {/* <Typography
                           sx={{
                             fontSize: 14,
                             fontWeight: 700,
@@ -875,7 +879,13 @@ const LiveTracking: React.FC = () => {
                           <Typography sx={{ fontSize: 12 }}>
                             Heading: {loc.heading.toFixed(0)}°
                           </Typography>
+                        )} */}
+                        {vehicleData && (
+                          <Typography>
+                            {vehicleData.registrationNumber}
+                          </Typography>
                         )}
+
                         {!isSelected && (
                           <Button
                             size="small"
@@ -901,7 +911,7 @@ const LiveTracking: React.FC = () => {
                           />
                         )}
                       </Box>
-                    </Popup> */}
+                    </Popup>
                   </Marker>
                 );
               })}

@@ -742,6 +742,24 @@ exports.uploadVehiclesImages = [
 
 exports.createDevice = async (req, res) => {
   try {
+    const emptyStd = {
+      safety: {
+        alerts: [],
+        crashDetected: false,
+        overspeeding: false,
+        geofenceviolation: false,
+      },
+      locs: {
+        timestamp: Date.now(),
+        lat: 21.5300211,
+        lng: 83.858938,
+        alt: 0,
+      },
+      status: "offline",
+    };
+
+    req.body.structuredTrackingData = emptyStd;
+
     const device = new Device(req.body);
 
     await device.save();
@@ -749,7 +767,6 @@ exports.createDevice = async (req, res) => {
     const data = {
       id: device._id,
       ...device.toObject(),
-      structuredTrackingData: { status: "offline" },
     };
 
     return res.status(201).json(data);
