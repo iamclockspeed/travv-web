@@ -48,28 +48,30 @@ router.get(
   apiController.operatorDashboardStats,
 );
 
-router.get(
-  API_VERSION + "/operator/live",
-  verifyOperatorToken,
-  apiController.getAllLive,
-);
-
-router.get(
-  API_VERSION + "/operator/live/:id",
-  verifyOperatorToken,
-  apiController.getLive,
-);
-
-router.get(
-  API_VERSION + "/operator/routes/:id",
-  verifyOperatorToken,
-  apiController.getOVRoute,
-);
+// Operators Misc Implementations
 
 router.get(
   API_VERSION + "/operator/totalVehicles",
   verifyOperatorToken,
   apiController.totalVehicles,
+);
+
+router.get(
+  API_VERSION + "/operator/liveStd",
+  verifyOperatorToken,
+  apiController.getAllLiveStd,
+);
+
+router.get(
+  API_VERSION + "/operator/liveStd/:id",
+  verifyOperatorToken,
+  apiController.getOneLiveStd,
+);
+
+router.get(
+  API_VERSION + "/operator/routes/:id",
+  verifyOperatorToken,
+  apiController.getOneVRoute,
 );
 
 // --------- Admin APIS ------------

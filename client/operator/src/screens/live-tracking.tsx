@@ -74,15 +74,19 @@ interface LiveStructuredRecord {
   locs: LiveLocsRecord;
 }
 
-interface LiveLocationRecord {
+interface VehicleLiveStructuredStats {
   id: string | number;
   std: LiveStructuredRecord;
-  routeIndex?: number;
 }
 
 interface VehicleRecord {
   id: string | number;
   registrationNumber: string;
+}
+
+interface VehicleRouteProps {
+  id: string | number;
+  points: RoutePoint[];
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -142,6 +146,7 @@ interface MapControllerProps {
   lng: number;
   follow: boolean;
 }
+
 const MapController: React.FC<MapControllerProps> = ({ lat, lng, follow }) => {
   const map = useMap();
   useEffect(() => {
@@ -387,7 +392,6 @@ const LiveTracking: React.FC = () => {
   const lastStopRef = useRef(-1);
 
   // ── 1. Vehicle list for the dropdown ─────────────────────────────────────
-  // GET /totalVehicles → [{ id, registrationNumber }]
   const { data: vehicleList, isLoading: vehiclesLoading } =
     useGetList<VehicleRecord>("totalVehicles", {
       pagination: { page: 1, perPage: 100 },
@@ -395,50 +399,47 @@ const LiveTracking: React.FC = () => {
     });
 
   // ── 2. ALL live data (all bus markers on map) ────────────────────────
-  // GET /live → [{ id, structured }]
-  const { data: allLocations, refetch: refetchAllLocations } =
-    useGetList<LiveLocationRecord>("live", {
+  const { data: allStd, refetch: refetchAllStd } =
+    useGetList<VehicleLiveStructuredStats>("liveStd", {
       pagination: { page: 1, perPage: 500 },
       sort: { field: "id", order: "ASC" },
     });
 
   // ── 3. Selected vehicle — dedicated single-record poll ────────────────────
-  // GET /live/:id → { id, structured }
-  const { data: selectedLocation, refetch: refetchSelectedLocation } =
-    useGetOne<LiveLocationRecord>(
-      "live",
+  const { data: selectedStd, refetch: refetchSelectedStd } =
+    useGetOne<VehicleLiveStructuredStats>(
+      "liveStd",
       { id: selectedVehicleId ?? "" },
       { enabled: !!selectedVehicleId },
     );
 
   // ── 4. Route for selected vehicle only ───────────────────────────────────
-  // GET /routes/:vehicleId → { id, points: RoutePoint[] }
   const {
     data: routeData,
     isLoading: routeLoading,
     error: routeError,
-  } = useGetOne<{ id: string | number; points: RoutePoint[] }>(
+  } = useGetOne<VehicleRouteProps>(
     "routes",
     { id: selectedVehicleId ?? "" },
     { enabled: !!selectedVehicleId },
   );
 
-  // ── Poll all locations ────────────────────────────────────────────────────
+  // ── Poll all std ────────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
-      refetchAllLocations().catch(() => {});
+      refetchAllStd().catch(() => {});
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [refetchAllLocations]);
+  }, [refetchAllStd]);
 
-  // ── Poll selected vehicle location ───────────────────────────────────────
+  // ── Poll selected vehicle std ───────────────────────────────────────
   useEffect(() => {
     if (!selectedVehicleId) return;
     const interval = setInterval(() => {
-      refetchSelectedLocation().catch(() => {});
+      refetchSelectedStd().catch(() => {});
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [selectedVehicleId, refetchSelectedLocation]);
+  }, [selectedVehicleId, refetchSelectedStd]);
 
   // ── Derived route data ────────────────────────────────────────────────────
   const ROUTE_DATA = useMemo(() => routeData?.points ?? [], [routeData]);
@@ -464,16 +465,16 @@ const LiveTracking: React.FC = () => {
   // ── Active location for selected vehicle ─────────────────────────────────
   // Prefer the dedicated single-record poll; fall back to entry in the list.
   const selectedInList = useMemo(
-    () => (allLocations ?? []).find((l) => l.id === selectedVehicleId) ?? null,
-    [allLocations, selectedVehicleId],
+    () => (allStd ?? []).find((l) => l.id === selectedVehicleId) ?? null,
+    [allStd, selectedVehicleId],
   );
-  const activeLoc: LiveLocationRecord | null = selectedVehicleId
-    ? (selectedLocation ?? selectedInList)
+  const activeLoc: VehicleLiveStructuredStats | null = selectedVehicleId
+    ? (selectedStd ?? selectedInList)
     : null;
 
   const displayLat = activeLoc?.std?.locs?.lat ?? 0.0;
   const displayLng = activeLoc?.std?.locs?.lng ?? 0.0;
-  const currentRouteIndex = activeLoc?.routeIndex ?? 0;
+  const currentRouteIndex = 0;
 
   // ── Trail accumulation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -542,7 +543,7 @@ const LiveTracking: React.FC = () => {
   const handleSelectVehicle = (vehicleId: string | number | null) => {
     setSelectedVehicleId(vehicleId);
     if (!vehicleId) return;
-    const loc = (allLocations ?? []).find((l) => l.id === vehicleId);
+    const loc = (allStd ?? []).find((l) => l.id === vehicleId);
     if (loc) {
       mapRef.current?.flyTo(
         [loc?.std?.locs?.lat ?? 0.0, loc?.std?.locs?.lng ?? 0.0],
@@ -838,9 +839,8 @@ const LiveTracking: React.FC = () => {
               })}
 
               {/* ── ALL VEHICLES: bus markers (always on map) ── */}
-              {(allLocations ?? []).map((loc) => {
-                // const isSelected = loc.id === selectedVehicleId;
-                const isSelected = true;
+              {(allStd ?? []).map((loc) => {
+                const isSelected = loc.id === selectedVehicleId;
                 return (
                   <Marker
                     key={`vehicle-${loc.id}`}
