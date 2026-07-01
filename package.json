@@ -9,7 +9,7 @@
         "start": "npm run server",
         "client-admin-dev": "npm run dev --prefix ./client/admin",
         "client-operator-dev": "npm run dev --prefix ./client/operator",
-        "client-user-dev": "npm run dev --prefix ./client/user",
+        "client-user-dev": "node -e \"const fs=require('fs'); const {spawnSync}=require('child_process'); if(fs.existsSync('./client/user/package.json')) spawnSync('npm',['run','dev','--prefix','./client/user'],{stdio:'inherit',shell:true});\"",
         "server-dev": "nodemon index.js --prefix server",
         "server": "node index.js --prefix server"
     },

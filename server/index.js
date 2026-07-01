@@ -1,4 +1,8 @@
-require("dotenv").config();
+const path = require("path");
+
+require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
 
 const express = require("express");
 const cors = require("cors");
@@ -46,7 +50,7 @@ mongoose
   .connect(DB_URL)
   .then(() => {
     app.listen(DB_PORT, () =>
-      console.log(`DB Server running on http://localhost:${DB_PORT}`)
+      console.log(`DB Server running on http://localhost:${DB_PORT}`),
     );
   })
   .catch((err) => console.error("MongoDB error:", err));

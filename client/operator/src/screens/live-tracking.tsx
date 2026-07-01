@@ -91,7 +91,7 @@ interface VehicleRouteProps {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS = 10000;
-const MAX_TRAIL_POINTS = 500;
+const MAX_TRAIL_POINTS = 50;
 const DEFAULT_CENTER: LatLngTuple = [21.5300211, 83.858938]; // India fallback
 const DEFAULT_ZOOM = 10;
 const SELECTED_ZOOM = 10;
