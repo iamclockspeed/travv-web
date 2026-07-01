@@ -65,7 +65,7 @@ const CustomLoginPage = () => {
             margin="normal"
             fullWidth
             type="text"
-            label="Login with username, phone, or email"
+            label="Login with phone or email"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
             placeholder="travv"

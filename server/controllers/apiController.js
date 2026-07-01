@@ -20,13 +20,12 @@ exports.operatorLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const operator = await Operator.findOne({
-      $or: [
-        { email: username },
-        { phone: username },
-        { profileName: username },
-      ],
-    });
+    const operator = await Operator.findOne(
+      {
+        $or: [{ email: username }, { phone: username }],
+      },
+      { profileName: 1, email: 1, phone: 1, passwordHash: 1, status: 1 },
+    );
 
     if (!operator) {
       return res.status(401).json({ message: "User not found" });
@@ -149,9 +148,9 @@ exports.operatorDashboardStats = async (req, res) => {
   try {
     const operatorId = req.user.id;
 
-    const vehicles = await Vehicle.find({ operator: operatorId }).populate(
-      "device",
-    );
+    const vehicles = await Vehicle.find({ operator: operatorId })
+      .select("device")
+      .populate("device", "structuredTrackingData");
 
     const totalVehicles = vehicles.length;
     let activeVehicles = 0;

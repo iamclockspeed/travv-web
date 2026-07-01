@@ -4,11 +4,9 @@ const apiController = require("../controllers/apiController");
 const Operator = require("../models/operators");
 const jwt = require("jsonwebtoken");
 
-const SECRET_KEY = process.env.JWT_SECRET;
-
 const API_VERSION = "/" + process.env.API_VERSION;
 
-// --------- Operators Panel APIS ------------
+//----------------------------------  Operators Panel APIS ----------------------------------//
 
 router.post(API_VERSION + "/operator/login", apiController.operatorLogin);
 
@@ -74,7 +72,7 @@ router.get(
   apiController.getOneVRoute,
 );
 
-// --------- Admin APIS ------------
+//---------------------------------- Admin APIS ----------------------------------//
 
 router.post(API_VERSION + "/admin/login", apiController.adminLogin);
 
@@ -264,7 +262,9 @@ router.get(
   apiController.listSupports,
 );
 
-// Others Implementations
+//---------------------------------- Middleware Implementations ------------------------------//
+
+const SECRET_KEY = process.env.JWT_SECRET;
 
 function verifyAdminToken(req, res, next) {
   const authHeader = req.headers["authorization"];
