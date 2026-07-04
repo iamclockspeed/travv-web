@@ -13,7 +13,8 @@ const TeltonikaServer = require("./teltonika/teltonikaServer");
 const TeltonikaController = require("./teltonika/teltonikaController");
 
 const mainRoutes = require("./routes/mainRoutes");
-const apiRoutes = require("./routes/apiRoutes");
+const adminApiRoutes = require("./routes/api/admin/routes");
+const operatorApiRoutes = require("./routes/api/operator/routes");
 
 const app = express();
 const REST_PORT = process.env.REST_PORT;
@@ -26,7 +27,8 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 app.use("/", mainRoutes);
-app.use("/api", apiRoutes);
+app.use("/api", adminApiRoutes);
+app.use("/api", operatorApiRoutes);
 
 app.use((req, res) => {
   if (req.originalUrl.startsWith("/api")) {
