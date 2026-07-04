@@ -7,7 +7,7 @@ const API_PREFIX = "/" + process.env.API_VERSION + "/admin";
 
 //---------------------------------- Admin APIS ----------------------------------//
 
-router.post(API_PREFIX + "/login", adminApiController.adminLogin);
+router.post(API_PREFIX + "/login", adminApiController.login);
 
 // Operators Implementations
 

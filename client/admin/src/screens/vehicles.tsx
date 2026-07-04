@@ -54,12 +54,8 @@ export const VehicleList = () => (
       <TextField source="make" />
       <TextField source="model" />
       <TextField source="fuelType" />
-      <TextField
-        source="device.deviceId"
-        label="Device ID / Serial no"
-        defaultValue="NA"
-      />
-      <TextField source="operator._id" label="Operator ID" defaultValue="NA" />
+      <TextField source="device" />
+      <TextField source="operator" />
       <EditButton />
       <DeleteButton mutationMode="pessimistic" />
     </Datagrid>
@@ -413,12 +409,8 @@ export const VehicleShow = () => (
           <TextField source="routeName" />
         </Datagrid>
       </ArrayField>
-      <TextField
-        source="device.deviceId"
-        label="Device ID / Serial no"
-        defaultValue="NA"
-      />
-      <TextField source="operator._id" label="Operator ID" defaultValue="NA" />
+      <TextField source="device" label="Device ID" defaultValue="NA" />
+      <TextField source="operator" label="Operator ID" defaultValue="NA" />
       <ArrayField source="documents">
         <Datagrid bulkActionButtons={false} rowClick={false}>
           <FileWithHost

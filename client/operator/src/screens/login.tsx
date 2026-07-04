@@ -2,6 +2,7 @@ import { useLogin, useNotify } from "react-admin";
 import { useState } from "react";
 import { Box, Typography, TextField, Button, Link } from "@mui/material";
 import LogoImage from "../assets/logo.png";
+import LoginScreenImage from "../assets/login-screen-bg.png";
 
 const CustomLoginPage = () => {
   const login = useLogin();
@@ -16,7 +17,7 @@ const CustomLoginPage = () => {
   return (
     <Box sx={{ position: "relative", width: "100%" }}>
       <img
-        src="https://www.shutterstock.com/image-vector/3d-realistic-bus-render-illustration-600nw-2401805639.jpg"
+        src={LoginScreenImage}
         alt=""
         style={{
           objectFit: "cover",
@@ -24,7 +25,7 @@ const CustomLoginPage = () => {
           width: "100%",
           height: "100%",
           zIndex: -1,
-          opacity: 0.1,
+          opacity: 1,
         }}
       />
       <Box

@@ -13,7 +13,7 @@ const fs = require("fs");
 
 //---------------------------------- Admin Functions ----------------------------------//
 
-exports.adminLogin = (req, res) => {
+exports.login = (req, res) => {
   if (
     req.body.username !== process.env.ADMIN_ID ||
     req.body.password !== process.env.ADMIN_PASSWORD
@@ -79,6 +79,7 @@ exports.listOperators = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const operators = await Operator.find(filter)
+      .select("fullLegalName email phone status")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -245,17 +246,18 @@ exports.listVehicles = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const vehicles = await Vehicle.find(filter)
-      .populate("device")
-      .populate("operator")
+      .select("registrationNumber type make model fuelType device operator")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
 
     const total = await Vehicle.countDocuments();
 
-    const data = vehicles.map((op) => ({
-      id: op._id,
-      ...op.toObject(),
+    const data = vehicles.map((ve) => ({
+      id: ve._id,
+      ...ve.toObject(),
+      device: ve.device != null ? "YES" : "NA",
+      operator: ve.operator != null ? "YES" : "NA",
     }));
 
     res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
@@ -269,10 +271,10 @@ exports.listVehicles = async (req, res) => {
 
 exports.getVehicle = async (req, res) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id)
-      .populate("routes")
-      .populate("device")
-      .populate("operator");
+    const vehicle = await Vehicle.findById(req.params.id).populate(
+      "routes",
+      "routeName",
+    );
 
     if (!vehicle) return res.status(404).json({ error: "Not found" });
 
@@ -491,9 +493,9 @@ exports.listDevices = async (req, res) => {
 
     const total = await Device.countDocuments();
 
-    const data = devices.map((op) => ({
-      id: op._id,
-      ...op.toObject(),
+    const data = devices.map((de) => ({
+      id: de._id,
+      ...de.toObject(),
     }));
 
     res.setHeader("Content-Range", `devices ${range[0]}-${range[1]}/${total}`);
@@ -577,8 +579,6 @@ exports.getVRoute = async (req, res) => {
   try {
     const vRoute = await VehicleRoute.findById(req.params.id);
 
-    console.log(vRoute, req.params.id);
-
     if (!vRoute) return res.status(404).json({ error: "Not found" });
 
     const data = { id: vRoute._id, ...vRoute.toObject() };
@@ -599,18 +599,19 @@ exports.listVRoutes = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const vRoutes = await VehicleRoute.find(filter)
+      .select("routeName")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
 
     const total = await VehicleRoute.countDocuments();
 
-    const data = vRoutes.map((op) => ({
-      id: op._id,
-      ...op.toObject(),
+    const data = vRoutes.map((vr) => ({
+      id: vr._id,
+      ...vr.toObject(),
     }));
 
-    res.setHeader("Content-Range", `devices ${range[0]}-${range[1]}/${total}`);
+    res.setHeader("Content-Range", `routes ${range[0]}-${range[1]}/${total}`);
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
     return res.json(data);
@@ -673,9 +674,9 @@ exports.listFeedbacks = async (req, res) => {
 
     const total = await Feedback.countDocuments();
 
-    const data = feedbacks.map((op) => ({
-      id: op._id,
-      ...op.toObject(),
+    const data = feedbacks.map((fb) => ({
+      id: fb._id,
+      ...fb.toObject(),
     }));
 
     res.setHeader(
@@ -708,9 +709,9 @@ exports.listSupports = async (req, res) => {
 
     const total = await Support.countDocuments();
 
-    const data = supports.map((op) => ({
-      id: op._id,
-      ...op.toObject(),
+    const data = supports.map((sp) => ({
+      id: sp._id,
+      ...sp.toObject(),
     }));
 
     res.setHeader("Content-Range", `supports ${range[0]}-${range[1]}/${total}`);

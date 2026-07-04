@@ -1,7 +1,12 @@
+// Import Requisites
 import { useDataProvider } from "react-admin";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, Box, Typography, Grid } from "@mui/material";
+
+// Import Custom
 import { DashCard } from "../components/custom-uis";
+
+// Import Icons
 import TimeToLeaveIcon from "@mui/icons-material/TimeToLeave";
 import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
@@ -13,6 +18,7 @@ import RouteIcon from "@mui/icons-material/Route";
 import UsbIcon from "@mui/icons-material/Usb";
 import UsbOffIcon from "@mui/icons-material/UsbOff";
 
+// Implementation
 interface TypeCounts {
   total: number;
   active: number;
