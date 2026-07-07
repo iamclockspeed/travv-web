@@ -69,10 +69,10 @@ export const VehicleCreate = () => {
   const { data: devices = [] } = useQuery({
     queryKey: ["availableDevices"],
     queryFn: async () => {
-      const response = await dataProvider.getList("devices", {
+      const response = await dataProvider.getList("devices-lite", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "deviceId", order: "ASC" },
-        filter: { vehicle: null },
+        filter: { vehicle: null, selectFields: "deviceId" },
       });
       return response.data;
     },
@@ -81,10 +81,10 @@ export const VehicleCreate = () => {
   const { data: operators = [] } = useQuery({
     queryKey: ["availableOperators"],
     queryFn: async () => {
-      const response = await dataProvider.getList("operators", {
+      const response = await dataProvider.getList("operators-lite", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "fullLegalName", order: "ASC" },
-        filter: { status: "active" },
+        filter: { status: "active", selectFields: "fullLegalName" },
       });
       return response.data;
     },
@@ -93,9 +93,10 @@ export const VehicleCreate = () => {
   const { data: routes = [] } = useQuery({
     queryKey: ["vehicleRoutes"],
     queryFn: async () => {
-      const response = await dataProvider.getList("routes", {
+      const response = await dataProvider.getList("routes-lite", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "routeName", order: "ASC" },
+        filter: { selectFields: "routeName" },
       });
       return response.data;
     },
@@ -221,10 +222,10 @@ export const VehicleEdit = () => {
   const { data: devices = [] } = useQuery({
     queryKey: ["availableDevices"],
     queryFn: async () => {
-      const response = await dataProvider.getList("devices", {
+      const response = await dataProvider.getList("devices-lite", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "deviceId", order: "ASC" },
-        filter: { vehicle: null },
+        filter: { vehicle: null, selectFields: "deviceId" },
       });
       return response.data;
     },
@@ -233,10 +234,10 @@ export const VehicleEdit = () => {
   const { data: operators = [] } = useQuery({
     queryKey: ["availableOperators"],
     queryFn: async () => {
-      const response = await dataProvider.getList("operators", {
+      const response = await dataProvider.getList("operators-lite", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "fullLegalName", order: "ASC" },
-        filter: { status: "active" },
+        filter: { status: "active", selectFields: "fullLegalName" },
       });
       return response.data;
     },
@@ -245,9 +246,10 @@ export const VehicleEdit = () => {
   const { data: routes = [] } = useQuery({
     queryKey: ["vehicleRoutes"],
     queryFn: async () => {
-      const response = await dataProvider.getList("routes", {
+      const response = await dataProvider.getList("routes-lite", {
         pagination: { page: 1, perPage: 100 },
         sort: { field: "routeName", order: "ASC" },
+        filter: { selectFields: "routeName" },
       });
       return response.data;
     },

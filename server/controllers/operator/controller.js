@@ -251,7 +251,8 @@ exports.totalVehicles = async (req, res) => {
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
 
-    const total = await Vehicle.countDocuments();
+    const total = await Vehicle.countDocuments(queryFilter);
+    // still wrong
 
     const data = vehicles
       .map((op) => ({

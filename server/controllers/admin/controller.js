@@ -103,6 +103,42 @@ exports.listOperators = async (req, res) => {
   }
 };
 
+exports.listOperatorsLite = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const { selectFields, ...filter } = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : { selectFields: "_id" };
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const operators = await Operator.find(filter)
+      .select(selectFields)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Operator.countDocuments();
+
+    const data = operators.map((op) => ({
+      id: op._id,
+      ...op.toObject(),
+    }));
+
+    res.setHeader(
+      "Content-Range",
+      `operators-lite ${range[0]}-${range[1]}/${total}`,
+    );
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getOperator = async (req, res) => {
   try {
     const operator = await Operator.findById(req.params.id);
@@ -191,7 +227,7 @@ exports.createVehicle = async (req, res) => {
     let device = null;
 
     if (deviceId) {
-      device = await Device.findById(deviceId);
+      device = await Device.findById(deviceId).select("vehicle");
       if (!device) throw new Error("Device not found");
       if (device.vehicle) throw new Error("Device already in use");
     }
@@ -269,6 +305,42 @@ exports.listVehicles = async (req, res) => {
   }
 };
 
+exports.listVehiclesLite = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const { selectFields, ...filter } = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : { selectFields: "_id" };
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const vehicles = await Vehicle.find(filter)
+      .select(selectFields)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Vehicle.countDocuments();
+
+    const data = vehicles.map((ve) => ({
+      id: ve._id,
+      ...ve.toObject(),
+    }));
+
+    res.setHeader(
+      "Content-Range",
+      `vehicles-lite ${range[0]}-${range[1]}/${total}`,
+    );
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getVehicle = async (req, res) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id).populate(
@@ -298,7 +370,9 @@ exports.updateVehicle = async (req, res) => {
       deviceId !== undefined
     ) {
       if (vehicle.device && vehicle.device.toString() !== deviceId) {
-        const oldDevice = await Device.findById(vehicle.device);
+        const oldDevice = await Device.findById(vehicle.device).select(
+          "vehicle",
+        );
         if (oldDevice) {
           oldDevice.vehicle = null;
           await oldDevice.save();
@@ -306,7 +380,7 @@ exports.updateVehicle = async (req, res) => {
       }
 
       if (deviceId) {
-        const newDevice = await Device.findById(deviceId);
+        const newDevice = await Device.findById(deviceId).select("vehicle");
         if (!newDevice) throw new Error("Device not found");
         if (newDevice.vehicle) throw new Error("Device already in use");
 
@@ -466,7 +540,11 @@ exports.countDevices = async (req, res) => {
 
 exports.getDevice = async (req, res) => {
   try {
-    const device = await Device.findById(req.params.id).populate("vehicle");
+    const device = await Device.findById(req.params.id)
+      .select(
+        "deviceId imei simNumber model manufacturer firmwareVersion type vehicle",
+      )
+      .populate("vehicle", "registrationNumber");
     if (!device) return res.status(404).json({ error: "Not found" });
 
     const data = { id: device._id, ...device.toObject() };
@@ -487,6 +565,7 @@ exports.listDevices = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const devices = await Device.find(filter)
+      .select("deviceId imei simNumber model manufacturer firmwareVersion type")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
@@ -507,9 +586,47 @@ exports.listDevices = async (req, res) => {
   }
 };
 
+exports.listDevicesLite = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const { selectFields, ...filter } = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : { selectFields: "_id" };
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const devices = await Device.find(filter)
+      .select(selectFields)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await Device.countDocuments();
+
+    const data = devices.map((de) => ({
+      id: de._id,
+      ...de.toObject(),
+    }));
+
+    res.setHeader(
+      "Content-Range",
+      `devices-lite ${range[0]}-${range[1]}/${total}`,
+    );
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 exports.updateDevice = async (req, res) => {
   try {
-    const device = await Device.findById(req.params.id);
+    const device = await Device.findById(req.params.id).select(
+      "-structuredTrackingData",
+    );
     if (!device) return res.status(404).json({ error: "Not found" });
 
     Object.assign(device, req.body);
@@ -612,6 +729,42 @@ exports.listVRoutes = async (req, res) => {
     }));
 
     res.setHeader("Content-Range", `routes ${range[0]}-${range[1]}/${total}`);
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range");
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.listVRoutesLite = async (req, res) => {
+  try {
+    const range = JSON.parse(req.query.range);
+    const sort = req.query.sort ? JSON.parse(req.query.sort) : ["_id", "ASC"];
+    const { selectFields, ...filter } = req.query.filter
+      ? JSON.parse(req.query.filter)
+      : { selectFields: "_id" };
+
+    const sortField = sort[0];
+    const sortOrder = sort[1] === "DESC" ? -1 : 1;
+
+    const vRoutes = await VehicleRoute.find(filter)
+      .select(selectFields)
+      .skip(range[0])
+      .limit(range[1])
+      .sort({ [sortField]: sortOrder });
+
+    const total = await VehicleRoute.countDocuments();
+
+    const data = vRoutes.map((vr) => ({
+      id: vr._id,
+      ...vr.toObject(),
+    }));
+
+    res.setHeader(
+      "Content-Range",
+      `routes-lite ${range[0]}-${range[1]}/${total}`,
+    );
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
     return res.json(data);

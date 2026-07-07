@@ -24,6 +24,12 @@ router.get(
 );
 
 router.get(
+  API_PREFIX + "/operators-lite",
+  verifyAuthToken,
+  adminApiController.listOperatorsLite,
+);
+
+router.get(
   API_PREFIX + "/operators/:id",
   verifyAuthToken,
   adminApiController.getOperator,
@@ -118,6 +124,12 @@ router.get(
 );
 
 router.get(
+  API_PREFIX + "/devices-lite",
+  verifyAuthToken,
+  adminApiController.listDevicesLite,
+);
+
+router.get(
   API_PREFIX + "/devices/:id",
   verifyAuthToken,
   adminApiController.getDevice,
@@ -153,6 +165,12 @@ router.get(
   API_PREFIX + "/routes",
   verifyAuthToken,
   adminApiController.listVRoutes,
+);
+
+router.get(
+  API_PREFIX + "/routes-lite",
+  verifyAuthToken,
+  adminApiController.listVRoutesLite,
 );
 
 router.get(
