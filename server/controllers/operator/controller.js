@@ -202,7 +202,7 @@ exports.operatorDashboardStats = async (req, res) => {
 
 // Operators Misc
 
-exports.totalVehicles = async (req, res) => {
+exports.totalVehiclesOverview = async (req, res) => {
   try {
     const operatorId = req.user.id;
 
@@ -226,6 +226,7 @@ exports.totalVehicles = async (req, res) => {
 
     const queryFilter = {
       operator: operatorId,
+      device: { $ne: null },
     };
 
     const search = vehicleFilter?.vehicle?.trim();
@@ -242,26 +243,38 @@ exports.totalVehicles = async (req, res) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const vehicles = await Vehicle.find(queryFilter)
+      .select("images registrationNumber make model device")
       .populate({
         path: "device",
         match: { ...structuredFilter },
+        select:
+          "structuredTrackingData.status structuredTrackingData.locs structuredTrackingData.safety.alerts",
       })
-      .populate("operator")
       .skip(range[0])
       .limit(range[1])
       .sort({ [sortField]: sortOrder });
 
-    const total = await Vehicle.countDocuments(queryFilter);
-    // still wrong
+    const total = (
+      await Vehicle.find(queryFilter)
+        .select("_id")
+        .populate({
+          path: "device",
+          match: { ...structuredFilter },
+          select: "_id",
+        })
+    ).filter((ve) => ve.device != null).length;
 
     const data = vehicles
-      .map((op) => ({
-        id: op._id,
-        ...op.toObject(),
+      .map((ve) => ({
+        id: ve._id,
+        ...ve.toObject(),
       }))
-      .filter((op) => op.device != null);
+      .filter((ve) => ve.device != null);
 
-    res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
+    res.setHeader(
+      "Content-Range",
+      `totalVehiclesOverview ${range[0]}-${range[1]}/${total}`,
+    );
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
     return res.json(data);

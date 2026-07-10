@@ -49,16 +49,10 @@ router.get(
 // Operators Misc Implementations
 
 router.get(
-  API_PREFIX + "/totalVehicles",
+  API_PREFIX + "/totalVehiclesOverview",
   verifyAuthToken,
-  operatorApiController.totalVehicles,
+  operatorApiController.totalVehiclesOverview,
 );
-
-// router.get(
-//   API_PREFIX + "/vehicle",
-//   verifyAuthToken,
-//   operatorApiController.getVehicle,
-// );
 
 router.get(
   API_PREFIX + "/liveStd",
