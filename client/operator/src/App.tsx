@@ -8,19 +8,21 @@ import ManageAccount from "./screens/account/manage-account";
 import Support from "./screens/account/support";
 import Feedback from "./screens/account/feedback";
 import LiveTracking from "./screens/live-tracking";
-import TotalVehicles from "./screens/features/total-vehicles";
-import ActiveVehicles from "./screens/features/active-vehicles";
-import IdleVehicles from "./screens/features/idle-vehicles";
-import OfflineVehicles from "./screens/features/offline-vehicles";
-import OverSpeedingVehicles from "./screens/features/over-speeding-vehicles";
-import GeoFenceViolatingVehicles from "./screens/features/geo-fence-violating-vehicles";
-import CrashDetectedVehicles from "./screens/features/crash-detected-vehicles";
-import ExcessiveIdleVehicles from "./screens/features/excessive-idle-vehicles";
-import LowFuelVehicles from "./screens/features/low-fuel-vehicles";
-import EngineBreakdownVehicles from "./screens/features/engine-breakdown-vehicles";
-import UnTVehicles from "./screens/features/unplug-and-towing-vehicles";
-import LowBatteryVehicles from "./screens/features/low-battery-vehicles";
-import UMVehicles from "./screens/features/upcomming-maintenance-vehicles";
+import {
+  TotalVehicles,
+  ActiveVehicles,
+  IdleVehicles,
+  OfflineVehicles,
+  OverSpeedingVehicles,
+  GeoFenceViolatingVehicles,
+  CrashDetectedVehicles,
+  ExcessiveIdleVehicles,
+  LowFuelVehicles,
+  EngineBreakdownVehicles,
+  UnTVehicles,
+  LowBatteryVehicles,
+  UMVehicles,
+} from "./screens/vehicle-list";
 import CustomLayout from "./components/layout";
 import "leaflet/dist/leaflet.css";
 import "slick-carousel/slick/slick.css";
