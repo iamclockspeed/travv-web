@@ -55,6 +55,12 @@ router.get(
 );
 
 router.get(
+  API_PREFIX + "/full-vehicle-details/:id",
+  verifyAuthToken,
+  operatorApiController.fullVehicleDetails,
+);
+
+router.get(
   API_PREFIX + "/liveStd",
   verifyAuthToken,
   operatorApiController.getAllLiveStd,

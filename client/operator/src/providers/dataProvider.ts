@@ -23,7 +23,7 @@ export type FeedbackPayload = {
 
 const httpClient = (
   url: string,
-  options: fetchUtils.Options = {}
+  options: fetchUtils.Options = {},
 ): Promise<any> => {
   if (!options.headers) {
     options.headers = new Headers({ Accept: "application/json" });
@@ -37,7 +37,7 @@ const httpClient = (
 
 const defaultDataProvider = simpleRestProvider(
   import.meta.env.VITE_BACKEND_HOST + import.meta.env.VITE_BACKEND_API_URL,
-  httpClient
+  httpClient,
 );
 
 const dataProvider: DataProvider = {
@@ -81,6 +81,10 @@ const dataProvider: DataProvider = {
     const response = await httpClient(url);
     if (!response.json.ok) throw new Error("Network error");
     return response.json;
+  },
+
+  getVehicleById: async (payload: { id: string }) => {
+    return defaultDataProvider.getOne("full-vehicle-details", payload);
   },
 };
 

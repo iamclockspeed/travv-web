@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useDataProvider } from "react-admin";
+import { useQuery } from "@tanstack/react-query";
 import {
   Box,
   Dialog,
@@ -7,6 +9,7 @@ import {
   Tabs,
   Tab,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import type { VehicleDetailsModalProps, TabPanelProps } from "./types-vehicles";
 import BasicDetailsTab from "./tabs/basics-details";
@@ -32,6 +35,28 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   onAlertUpdate,
 }) => {
   if (!vehicle) return null;
+
+  const dataProvider = useDataProvider();
+
+  const { data: fullVehicle, isLoading } = useQuery({
+    queryKey: ["full-vehicle-details", vehicle?.id],
+    queryFn: () => (dataProvider as any).getVehicleById({ id: vehicle!.id }),
+    enabled: open && !!vehicle?.id,
+  });
+
+  // if (isLoading) {
+  //   return (
+  //     <Dialog open={open} onClose={onClose}>
+  //       <Box p={4} display="flex" justifyContent="center">
+  //         <CircularProgress />
+  //       </Box>
+  //     </Dialog>
+  //   );
+  // }
+
+  if (!fullVehicle) return null;
+
+  console.log(fullVehicle.data);
 
   const [tabIndex, setTabIndex] = useState(0);
 
@@ -64,17 +89,20 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
         {/* Basic Details */}
         <TabPanel value={tabIndex} index={0}>
-          <BasicDetailsTab vehicle={vehicle} />
+          <BasicDetailsTab vehicle={fullVehicle.data} />
         </TabPanel>
 
         {/* Alert History */}
         <TabPanel value={tabIndex} index={1}>
-          <AlertsHistoryTab vehicle={vehicle} onAlertUpdate={onAlertUpdate} />
+          <AlertsHistoryTab
+            vehicle={fullVehicle.data}
+            onAlertUpdate={onAlertUpdate}
+          />
         </TabPanel>
 
         {/* Documents */}
         <TabPanel value={tabIndex} index={2}>
-          <DoccumentsTab vehicle={vehicle} />
+          <DoccumentsTab vehicle={fullVehicle.data} />
         </TabPanel>
       </DialogContent>
     </Dialog>

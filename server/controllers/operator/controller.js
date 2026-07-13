@@ -283,6 +283,20 @@ exports.totalVehiclesOverview = async (req, res) => {
   }
 };
 
+exports.fullVehicleDetails = async (req, res) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id).populate("device");
+
+    if (!vehicle) return res.status(404).json({ error: "Not found" });
+
+    const data = { id: vehicle._id, ...vehicle.toObject() };
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getAllLiveStd = async (req, res) => {
   try {
     const operatorId = req.user.id;
