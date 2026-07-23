@@ -76,6 +76,7 @@ export interface VehicleDetailsModalProps {
   onClose: () => void;
   vehicle: Vehicle | null;
   onAlertUpdate?: (vehicleId: number, updatedAlerts: VehicleAlert[]) => void;
+  onFullDataFetch?: (vehicleId: number) => Vehicle | boolean | null;
 }
 
 export interface TabPanelProps {

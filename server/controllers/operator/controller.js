@@ -141,7 +141,10 @@ exports.operatorDashboardStats = async (req, res) => {
   try {
     const operatorId = req.user.id;
 
-    const vehicles = await Vehicle.find({ operator: operatorId })
+    const vehicles = await Vehicle.find({
+      operator: operatorId,
+      device: { $ne: null },
+    })
       .select("device")
       .populate("device", "structuredTrackingData");
 
@@ -291,7 +294,8 @@ exports.fullVehicleDetails = async (req, res) => {
 
     const data = { id: vehicle._id, ...vehicle.toObject() };
 
-    return res.json(data);
+    // return res.json(data);
+    return res.status(500).json({ message: "" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

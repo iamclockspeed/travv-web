@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useDataProvider } from "react-admin";
+import { useQuery } from "@tanstack/react-query";
 import {
   ListBase,
   useListContext,
@@ -55,11 +57,23 @@ const VehicleTable: React.FC = () => {
   const { page, perPage, data, isLoading } = useListContext<Vehicle>();
   const [open, setOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const dataProvider = useDataProvider();
 
   const handleRowClick = (id: string | number | undefined) => {
     const vehicle = data?.find((v) => v.id === id) || null;
     setSelectedVehicle(vehicle);
     setOpen(true);
+  };
+
+  const handleFullDataFetch = (vehicleId: number) => {
+    const { data: fullData, isLoading: isDataLoading } = useQuery({
+      queryKey: ["full-vehicle-details", vehicleId],
+      queryFn: () => (dataProvider as any).getVehicleById({ id: vehicleId }),
+    });
+    if (isDataLoading) {
+      return isDataLoading;
+    }
+    return fullData?.data;
   };
 
   const handleAlertUpdate = (
@@ -145,6 +159,7 @@ const VehicleTable: React.FC = () => {
         onClose={() => setOpen(false)}
         vehicle={selectedVehicle}
         onAlertUpdate={handleAlertUpdate}
+        onFullDataFetch={handleFullDataFetch}
       />
     </>
   );

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { useDataProvider } from "react-admin";
-import { useQuery } from "@tanstack/react-query";
 import {
   Box,
   Dialog,
@@ -33,32 +31,26 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   onClose,
   vehicle,
   onAlertUpdate,
+  onFullDataFetch,
 }) => {
-  if (!vehicle) return null;
-
-  const dataProvider = useDataProvider();
-
-  const { data: fullVehicle, isLoading } = useQuery({
-    queryKey: ["full-vehicle-details", vehicle?.id],
-    queryFn: () => (dataProvider as any).getVehicleById({ id: vehicle!.id }),
-    enabled: open && !!vehicle?.id,
-  });
-
-  // if (isLoading) {
-  //   return (
-  //     <Dialog open={open} onClose={onClose}>
-  //       <Box p={4} display="flex" justifyContent="center">
-  //         <CircularProgress />
-  //       </Box>
-  //     </Dialog>
-  //   );
-  // }
-
-  if (!fullVehicle) return null;
-
-  console.log(fullVehicle.data);
-
   const [tabIndex, setTabIndex] = useState(0);
+
+  if (!vehicle) return null;
+  if (!onFullDataFetch) return null;
+
+  const fullVehicleData = onFullDataFetch(vehicle.id);
+
+  if (!fullVehicleData) return null;
+
+  if (typeof fullVehicleData === "boolean") {
+    return (
+      <Dialog open={open}>
+        <Box p={4} display="flex" justifyContent="center">
+          <CircularProgress onEnded={onClose} />
+        </Box>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -89,20 +81,20 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
         {/* Basic Details */}
         <TabPanel value={tabIndex} index={0}>
-          <BasicDetailsTab vehicle={fullVehicle.data} />
+          <BasicDetailsTab vehicle={fullVehicleData} />
         </TabPanel>
 
         {/* Alert History */}
         <TabPanel value={tabIndex} index={1}>
           <AlertsHistoryTab
-            vehicle={fullVehicle.data}
+            vehicle={fullVehicleData}
             onAlertUpdate={onAlertUpdate}
           />
         </TabPanel>
 
         {/* Documents */}
         <TabPanel value={tabIndex} index={2}>
-          <DoccumentsTab vehicle={fullVehicle.data} />
+          <DoccumentsTab vehicle={fullVehicleData} />
         </TabPanel>
       </DialogContent>
     </Dialog>
