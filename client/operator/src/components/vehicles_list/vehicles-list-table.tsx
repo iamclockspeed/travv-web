@@ -57,11 +57,13 @@ const VehicleTable: React.FC = () => {
   const { page, perPage, data, isLoading } = useListContext<Vehicle>();
   const [open, setOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [modalVersion, setModalVersion] = useState(0);
   const dataProvider = useDataProvider();
 
   const handleRowClick = (id: string | number | undefined) => {
     const vehicle = data?.find((v) => v.id === id) || null;
     setSelectedVehicle(vehicle);
+    setModalVersion((v) => v + 1);
     setOpen(true);
   };
 
@@ -154,7 +156,7 @@ const VehicleTable: React.FC = () => {
       </Datagrid>
       <Pagination />
       <VehicleDetailsModal
-        key={selectedVehicle?.id}
+        key={`${selectedVehicle?.id}-${modalVersion}`}
         open={open}
         onClose={() => setOpen(false)}
         vehicle={selectedVehicle}

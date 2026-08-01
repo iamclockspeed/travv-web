@@ -294,8 +294,7 @@ exports.fullVehicleDetails = async (req, res) => {
 
     const data = { id: vehicle._id, ...vehicle.toObject() };
 
-    // return res.json(data);
-    return res.status(500).json({ message: "" });
+    return res.json(data);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
