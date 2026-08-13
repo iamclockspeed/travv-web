@@ -5,26 +5,32 @@ import { Card, CardContent, Box, Typography, Grid } from "@mui/material";
 import { DashCard } from "../components/custom-uis";
 import TimeToLeaveIcon from "@mui/icons-material/TimeToLeave";
 import AccessTimeFilledIcon from "@mui/icons-material/AccessTimeFilled";
-import PlayCircleIcon from "@mui/icons-material/PlayCircle";
+import NearMeIcon from "@mui/icons-material/NearMe";
+import PinDropIcon from "@mui/icons-material/PinDrop";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 import SpeedIcon from "@mui/icons-material/Speed";
 import WrongLocationIcon from "@mui/icons-material/WrongLocation";
 import CarCrashIcon from "@mui/icons-material/CarCrash";
-// import HourglassTopIcon from "@mui/icons-material/HourglassTop";
-// import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
-// import HandymanIcon from "@mui/icons-material/Handyman";
-// import LocalShippingIcon from "@mui/icons-material/LocalShipping";
-// import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
-// import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
+import HourglassTopIcon from "@mui/icons-material/HourglassTop";
+import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+import PowerOffIcon from "@mui/icons-material/PowerOff";
+import CarRepairIcon from "@mui/icons-material/CarRepair";
+import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
 
 interface TypeCounts {
   totalVehicles: number;
   activeVehicles: number;
   idleVehicles: number;
+  parkedVehicles: number;
   offlineVehicles: number;
-  crashDetected: number;
   overspeeding: number;
   violategeofence: number;
+  crashDetected: number;
+  excessiveIdleVehicles: number;
+  lowFuelVehicles: number;
+  lowBatteryVehicles: number;
+  unpluggedVehicles: number;
+  towingVehicles: number;
 }
 
 const Dashboard = () => {
@@ -37,10 +43,16 @@ const Dashboard = () => {
       totalVehicles: 0,
       activeVehicles: 0,
       idleVehicles: 0,
+      parkedVehicles: 0,
       offlineVehicles: 0,
-      crashDetected: 0,
       overspeeding: 0,
       violategeofence: 0,
+      crashDetected: 0,
+      excessiveIdleVehicles: 0,
+      lowFuelVehicles: 0,
+      lowBatteryVehicles: 0,
+      unpluggedVehicles: 0,
+      towingVehicles: 0,
     },
   } = useQuery<TypeCounts>({
     queryKey: ["dashStats"],
@@ -69,7 +81,7 @@ const Dashboard = () => {
               <DashCard
                 v1={stats.activeVehicles}
                 v2="Active Vehicles"
-                icon={<PlayCircleIcon fontSize="large" />}
+                icon={<NearMeIcon fontSize="large" />}
                 onClick={() => navigate("/active-vehicles")}
               ></DashCard>
 
@@ -78,6 +90,13 @@ const Dashboard = () => {
                 v2="Idle Vehicles"
                 icon={<AccessTimeFilledIcon fontSize="large" />}
                 onClick={() => navigate("/idle-vehicles")}
+              ></DashCard>
+
+              <DashCard
+                v1={stats.parkedVehicles}
+                v2="Parked Vehicles"
+                icon={<PinDropIcon fontSize="large" />}
+                onClick={() => navigate("/parked-vehicles")}
               ></DashCard>
 
               <DashCard
@@ -117,7 +136,7 @@ const Dashboard = () => {
             </Grid>
           </Box>
 
-          {/* <Box>
+          <Box>
             <Box>
               <Typography variant="h6">
                 🟨 Vehicle Behavior & Performance
@@ -132,15 +151,15 @@ const Dashboard = () => {
               ></DashCard>
 
               <DashCard
-                v1={251}
+                v1={stats.lowFuelVehicles}
                 v2="Low Fuel Vehicles"
                 icon={<LocalGasStationIcon fontSize="large" />}
                 onClick={() => navigate("/low-fuel-vehicles")}
               ></DashCard>
             </Grid>
-          </Box> */}
+          </Box>
 
-          {/* <Box>
+          <Box>
             <Box>
               <Typography variant="h6">
                 🟥 System Health & Maintenance
@@ -148,34 +167,27 @@ const Dashboard = () => {
             </Box>
             <Grid container spacing={2} mt={1}>
               <DashCard
-                v1={251}
-                v2="Engine Breakdown Alerts"
-                icon={<HandymanIcon fontSize="large" />}
-                onClick={() => navigate("/engine-breakdown-vehicles")}
-              ></DashCard>
-
-              <DashCard
-                v1={251}
-                v2="Unplug & Towing Alerts"
-                icon={<LocalShippingIcon fontSize="large" />}
-                onClick={() => navigate("/unplug-and-towing-vehicles")}
-              ></DashCard>
-
-              <DashCard
-                v1={251}
+                v1={stats.lowBatteryVehicles}
                 v2="Low Battery Alerts"
                 icon={<BatteryCharging20Icon fontSize="large" />}
                 onClick={() => navigate("/low-battery-vehicles")}
               ></DashCard>
 
               <DashCard
-                v1={251}
-                v2="Upcoming Maintenance"
-                icon={<SettingsSuggestIcon fontSize="large" />}
-                onClick={() => navigate("/upcomming-maintenance-vehicles")}
+                v1={stats.unpluggedVehicles}
+                v2="Unplug Alerts"
+                icon={<PowerOffIcon fontSize="large" />}
+                onClick={() => navigate("/unplugged-vehicles")}
+              ></DashCard>
+
+              <DashCard
+                v1={stats.towingVehicles}
+                v2="Towing Alerts"
+                icon={<CarRepairIcon fontSize="large" />}
+                onClick={() => navigate("/towing-vehicles")}
               ></DashCard>
             </Grid>
-          </Box> */}
+          </Box>
         </Box>
       </CardContent>
     </Card>

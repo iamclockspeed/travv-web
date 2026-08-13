@@ -12,16 +12,16 @@ import {
   TotalVehicles,
   ActiveVehicles,
   IdleVehicles,
+  ParkedVehicles,
   OfflineVehicles,
   OverSpeedingVehicles,
   GeoFenceViolatingVehicles,
   CrashDetectedVehicles,
   ExcessiveIdleVehicles,
   LowFuelVehicles,
-  EngineBreakdownVehicles,
-  UnTVehicles,
   LowBatteryVehicles,
-  UMVehicles,
+  UnpluggedVehicles,
+  TowingVehicles,
 } from "./screens/vehicle-list";
 import CustomLayout from "./components/layout";
 import "leaflet/dist/leaflet.css";
@@ -46,6 +46,7 @@ const App = () => (
       <Route path="/total-vehicles" element={<TotalVehicles />} />
       <Route path="/active-vehicles" element={<ActiveVehicles />} />
       <Route path="/idle-vehicles" element={<IdleVehicles />} />
+      <Route path="/parked-vehicles" element={<ParkedVehicles />} />
       <Route path="/offline-vehicles" element={<OfflineVehicles />} />
 
       <Route
@@ -67,13 +68,9 @@ const App = () => (
       />
       <Route path="/low-fuel-vehicles" element={<LowFuelVehicles />} />
 
-      <Route
-        path="/engine-breakdown-vehicles"
-        element={<EngineBreakdownVehicles />}
-      />
-      <Route path="/unplug-and-towing-vehicles" element={<UnTVehicles />} />
       <Route path="/low-battery-vehicles" element={<LowBatteryVehicles />} />
-      <Route path="/upcomming-maintenance-vehicles" element={<UMVehicles />} />
+      <Route path="/unplugged-vehicles" element={<UnpluggedVehicles />} />
+      <Route path="/towing-vehicles" element={<TowingVehicles />} />
     </CustomRoutes>
   </Admin>
 );

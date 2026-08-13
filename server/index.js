@@ -9,8 +9,31 @@ const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
 
+function isDBConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
+const DB_URL = process.env.DB_URL;
+mongoose
+  .connect(DB_URL)
+  .then(() => {
+    console.log(`MongoDB connected and running on ${DB_URL}`);
+  })
+  .catch((err) => console.error("MongoDB error:", err));
+
 const TeltonikaServer = require("./teltonika/teltonikaServer");
 const TeltonikaController = require("./teltonika/teltonikaController");
+
+const T_PORT = process.env.TELTONIKA_PORT;
+const tracker = new TeltonikaServer({
+  port: T_PORT,
+  db: mongoose,
+  isDBConnected: isDBConnected,
+});
+const tController = new TeltonikaController({
+  isDBConnected: isDBConnected,
+});
+tController.attachTracker(tracker);
 
 const mainRoutes = require("./routes/mainRoutes");
 const adminApiRoutes = require("./routes/api/admin/routes");
@@ -27,8 +50,8 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 app.use("/", mainRoutes);
-app.use("/api", adminApiRoutes);
-app.use("/api", operatorApiRoutes);
+app.use("/api", adminApiRoutes({ teltonikaController: tController }));
+app.use("/api", operatorApiRoutes({ teltonikaController: tController }));
 
 app.use((req, res) => {
   if (req.originalUrl.startsWith("/api")) {
@@ -44,32 +67,3 @@ app.use((req, res) => {
 app.listen(REST_PORT, () => {
   console.log(`Rest Server running on http://localhost:${REST_PORT}`);
 });
-
-const DB_URL = process.env.DB_URL;
-const DB_PORT = process.env.DB_PORT;
-
-mongoose
-  .connect(DB_URL)
-  .then(() => {
-    app.listen(DB_PORT, () =>
-      console.log(`DB Server running on http://localhost:${DB_PORT}`),
-    );
-  })
-  .catch((err) => console.error("MongoDB error:", err));
-
-function isDBConnected() {
-  return mongoose.connection.readyState === 1;
-}
-
-const T_PORT = process.env.TELTONIKA_PORT;
-
-const tracker = new TeltonikaServer({
-  port: T_PORT,
-  db: mongoose,
-  isDBConnected: isDBConnected,
-});
-
-const tController = new TeltonikaController({
-  isDBConnected: isDBConnected,
-});
-tController.attachTracker(tracker);

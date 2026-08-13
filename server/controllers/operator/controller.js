@@ -151,10 +151,16 @@ exports.operatorDashboardStats = async (req, res) => {
     const totalVehicles = vehicles.length;
     let activeVehicles = 0;
     let idleVehicles = 0;
+    let parkedVehicles = 0;
     let offlineVehicles = 0;
-    let crashDetected = 0;
     let overspeeding = 0;
     let violategeofence = 0;
+    let crashDetected = 0;
+    let excessiveIdleVehicles = 0;
+    let lowFuelVehicles = 0;
+    let lowBatteryVehicles = 0;
+    let unpluggedVehicles = 0;
+    let towingVehicles = 0;
 
     vehicles.forEach((vehicle) => {
       const status = vehicle.device.std?.status ?? "";
@@ -192,10 +198,16 @@ exports.operatorDashboardStats = async (req, res) => {
       totalVehicles,
       activeVehicles,
       idleVehicles,
+      parkedVehicles,
       offlineVehicles,
-      crashDetected,
       overspeeding,
       violategeofence,
+      crashDetected,
+      excessiveIdleVehicles,
+      lowFuelVehicles,
+      lowBatteryVehicles,
+      unpluggedVehicles,
+      towingVehicles,
     });
   } catch (err) {
     console.error(err);

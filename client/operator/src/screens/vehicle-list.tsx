@@ -22,6 +22,15 @@ export const IdleVehicles = () => {
   );
 };
 
+export const ParkedVehicles = () => {
+  return (
+    <VehiclesTableSimple
+      resource={"totalVehiclesOverview"}
+      filter={{ "structuredTrackingData.status": "parked" }}
+    />
+  );
+};
+
 export const OfflineVehicles = () => {
   return (
     <VehiclesTableSimple
@@ -60,26 +69,57 @@ export const CrashDetectedVehicles = () => {
   );
 };
 
-export const EngineBreakdownVehicles = () => {
-  return <VehiclesTableSimple resource="totalVehiclesOverview" />;
-};
-
 export const ExcessiveIdleVehicles = () => {
-  return <VehiclesTableSimple resource="totalVehiclesOverview" />;
-};
-
-export const LowBatteryVehicles = () => {
-  return <VehiclesTableSimple resource="totalVehiclesOverview" />;
+  return (
+    <VehiclesTableSimple
+      resource="totalVehiclesOverview"
+      filter={{
+        "structuredTrackingData.vehavior.alerts.type": "excessive idle",
+      }}
+    />
+  );
 };
 
 export const LowFuelVehicles = () => {
-  return <VehiclesTableSimple resource="totalVehiclesOverview" />;
+  return (
+    <VehiclesTableSimple
+      resource="totalVehiclesOverview"
+      filter={{
+        "structuredTrackingData.vehavior.alerts.type": "low fuel",
+      }}
+    />
+  );
 };
 
-export const UnTVehicles = () => {
-  return <VehiclesTableSimple resource="totalVehiclesOverview" />;
+export const LowBatteryVehicles = () => {
+  return (
+    <VehiclesTableSimple
+      resource="totalVehiclesOverview"
+      filter={{
+        "structuredTrackingData.health.alerts.type": "low battery",
+      }}
+    />
+  );
 };
 
-export const UMVehicles = () => {
-  return <VehiclesTableSimple resource="totalVehiclesOverview" />;
+export const UnpluggedVehicles = () => {
+  return (
+    <VehiclesTableSimple
+      resource="totalVehiclesOverview"
+      filter={{
+        "structuredTrackingData.health.alerts.type": "unplugged",
+      }}
+    />
+  );
+};
+
+export const TowingVehicles = () => {
+  return (
+    <VehiclesTableSimple
+      resource="totalVehiclesOverview"
+      filter={{
+        "structuredTrackingData.health.alerts.type": "towing",
+      }}
+    />
+  );
 };
