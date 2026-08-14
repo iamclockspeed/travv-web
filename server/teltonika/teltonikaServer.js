@@ -34,7 +34,9 @@ class TeltonikaServer extends EventEmitter {
           }
 
           try {
-            const device = await Device.findOne({ imei: deviceIMEI });
+            const device = await Device.findOne({ imei: deviceIMEI }).select(
+              "imei",
+            );
 
             if (!device) {
               console.log("IMEI Not found in DB:", deviceIMEI);
@@ -92,6 +94,15 @@ class TeltonikaServer extends EventEmitter {
     });
   }
 
+  getMeta(socket) {
+    return {
+      remoteAddress: socket.remoteAddress,
+      remotePort: socket.remotePort,
+      deviceIMEI: socket.deviceIMEI,
+      receiveTime: new Date(),
+    };
+  }
+
   _handleJsonString(str, socket) {
     try {
       const obj = JSON.parse(str);
@@ -101,28 +112,16 @@ class TeltonikaServer extends EventEmitter {
         "[Teltonika] JSON parse failed (string). Buffering as raw:",
         err.message,
       );
-      this.emit("raw", { raw: str, socket });
+      this.emit("raw", { meta: this.getMeta(socket), raw: str });
     }
   }
 
   _emitParsed(obj, socket) {
-    const meta = {
-      remoteAddress: socket.remoteAddress,
-      remotePort: socket.remotePort,
-      deviceIMEI: socket.deviceIMEI,
-      receiveTime: new Date(),
-    };
-    this.emit("message", { meta, payload: obj });
+    this.emit("message", { meta: this.getMeta(socket), payload: obj });
   }
 
   onDisconnection(socket) {
-    const meta = {
-      remoteAddress: socket.remoteAddress,
-      remotePort: socket.remotePort,
-      deviceIMEI: socket.deviceIMEI,
-      receiveTime: new Date(),
-    };
-    this.emit("disconnection", { meta });
+    this.emit("disconnection", { meta: this.getMeta(socket) });
   }
 
   stop(callback) {

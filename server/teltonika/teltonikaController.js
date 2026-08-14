@@ -4,8 +4,15 @@ const DeviceMessage = require("../models/devicemessage");
 class TeltonikaController {
   constructor(options = {}) {
     this.isDBConnected = options.isDBConnected;
+    this.fastData = new Map();
+    this.fastData.set("devices", new Map());
   }
   attachTracker(tracker) {
+    this.trackerEvents(tracker);
+    tracker.start();
+  }
+
+  trackerEvents(tracker) {
     tracker.on("message", async ({ meta, payload }) => {
       try {
         if (!this.isDBConnected()) {
@@ -55,14 +62,12 @@ class TeltonikaController {
       );
     });
 
-    tracker.on("raw", ({ raw, socket }) => {
+    tracker.on("raw", ({ meta, raw }) => {
       console.warn(
         "[Teltonika] raw data received (could not parse to JSON):",
         raw,
       );
     });
-
-    tracker.start();
   }
 
   async updateAndStoreData(meta, payload, skip_structured = false) {
