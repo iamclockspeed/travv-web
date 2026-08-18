@@ -137,7 +137,7 @@ exports.createFeedback = async (req, res) => {
 
 // Operators Dashboard Stats
 
-exports.operatorDashboardStats = async (req, res) => {
+exports.operatorDashboardStats = async (req, res, next, tController) => {
   try {
     const operatorId = req.user.id;
 
@@ -146,7 +146,11 @@ exports.operatorDashboardStats = async (req, res) => {
       device: { $ne: null },
     })
       .select("device")
-      .populate("device", "structuredTrackingData");
+      .populate("device", "imei");
+
+    const imeis = new Set(vehicles.map((vehicle) => vehicle.device.imei));
+
+    const fastDataVehicles = tController.filterDevices(imeis);
 
     const totalVehicles = vehicles.length;
     let activeVehicles = 0;
@@ -162,20 +166,18 @@ exports.operatorDashboardStats = async (req, res) => {
     let unpluggedVehicles = 0;
     let towingVehicles = 0;
 
-    vehicles.forEach((vehicle) => {
-      const status = vehicle.device.std?.status ?? "";
-      const crashReport = vehicle.device.std?.safety?.crashDetected ?? false;
-
-      const overspeedingReport =
-        vehicle.device.std?.safety?.overspeeding ?? false;
-
-      const violategeofenceReport =
-        vehicle.device.std?.safety?.violategeofence ?? false;
+    fastDataVehicles.forEach((fdVehicle) => {
+      const status = fdVehicle.structured.general.status;
+      const crashReport = fdVehicle.structured.safety.crashDetected;
+      const overspeedingReport = fdVehicle.structured.safety.overspeeding;
+      // const violategeofenceReport = fdVehicle.structured.safety.violategeofence;
 
       if (status == "active") {
         activeVehicles += 1;
       } else if (status == "idle") {
         idleVehicles += 1;
+      } else if (status == "parked") {
+        parkedVehicles += 1;
       } else {
         offlineVehicles += 1;
       }
@@ -188,9 +190,9 @@ exports.operatorDashboardStats = async (req, res) => {
         overspeeding += 1;
       }
 
-      if (violategeofenceReport) {
-        violategeofence += 1;
-      }
+      // if (violategeofenceReport) {
+      //   violategeofence += 1;
+      // }
     });
 
     return res.json({

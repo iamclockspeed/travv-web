@@ -40,11 +40,14 @@ module.exports = function (options = {}) {
 
   // Operators Dashboard Stats Implementations
 
-  router.get(
-    API_PREFIX + "/dash-stats",
-    verifyAuthToken,
-    operatorApiController.operatorDashboardStats,
-  );
+  router.get(API_PREFIX + "/dash-stats", verifyAuthToken, (req, res, next) => {
+    operatorApiController.operatorDashboardStats(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
   // Operators Misc Implementations
 
