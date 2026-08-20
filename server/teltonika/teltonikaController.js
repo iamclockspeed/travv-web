@@ -3,8 +3,8 @@ const DeviceMessage = require("../models/devicemessage");
 
 class TeltonikaController {
   constructor(options = {}) {
-    this.messageHistoryCount = 10;
     this.isDBConnected = options.isDBConnected;
+    this.unstructuredMaxMsg = 10;
     this.fastData = new Map();
     this.fastData.set("devices", new Map());
   }
@@ -32,6 +32,12 @@ class TeltonikaController {
           )}s | data: ${JSON.stringify(payload)}`,
         );
         this.updateDevice(deviceIMEI, payload);
+      } else {
+        console.log(
+          `[Teltonika] Rejected payload | IMEI=${deviceIMEI} | ts=${ts} | age=${Math.round(
+            Math.abs(Date.now() - ts) / 1000,
+          )}s`,
+        );
       }
     });
 
@@ -53,10 +59,12 @@ class TeltonikaController {
     return this.fastData.get("devices").set(key, value);
   }
 
-  filterDevices(imeis) {
-    return new Map(
-      [...this.fastData.get("devices")].filter(([key]) => imeis.has(key)),
+  filterDevices(imeis, returnArray = false) {
+    const filtered = [...this.fastData.get("devices")].filter(([key]) =>
+      imeis.has(key),
     );
+    if (returnArray) return filtered;
+    return new Map(filtered);
   }
 
   updateDevice(imei, data) {
@@ -69,7 +77,7 @@ class TeltonikaController {
         ts: Date.now(),
         structured: {
           general: {},
-          safety: {},
+          alerts: {},
           locs: {},
         },
         unstructured: [data],
@@ -79,9 +87,9 @@ class TeltonikaController {
 
   updateDeviceStructured(imei) {
     const device = this.getDevice(imei);
-    this.deviceStatusUpdate(device);
-    this.deviceSafetyUpdate(device);
     this.deviceLocsUpdate(device);
+    this.deviceStatusUpdate(device);
+    this.deviceAlertsUpdate(device);
   }
 
   deviceStatusUpdate(device) {
@@ -137,41 +145,50 @@ class TeltonikaController {
     return;
   }
 
-  deviceSafetyUpdate(device) {
+  deviceAlertsUpdate(device) {
     const prevLatestData = device.unstructured[device.unstructured.length - 1];
 
-    device.structured.safety.ts =
+    device.structured.alerts.ts =
       prevLatestData?.state?.reported?.ts || Date.now();
-    device.structured.safety.alerts ||= [];
+    device.structured.alerts.list ||= [];
     const alertsMap = new Map(
-      device.structured.safety.alerts.map((a) => [a.type, a]),
+      device.structured.alerts.list.map((a) => [a.message, a]),
     );
+
+    const [lat, lng] = prevLatestData?.state?.reported?.latlng
+      ?.split(",")
+      .map(Number) || [0.0, 0.0];
+    const alt = prevLatestData?.state?.reported?.alt || 0.0;
+
+    const common = {
+      ts: device.structured.alerts.ts,
+      locs: {
+        lat,
+        lng,
+        alt,
+      },
+      unhandled: true,
+    };
 
     // Crash
     if (prevLatestData.state.reported["247"]) {
-      device.structured.safety.crashDetected = true;
       alertsMap.set("crash detected", {
-        type: "crash detected",
-        unhandled: true,
+        ...common,
+        type: "safety",
+        message: "crash detected",
       });
-    } else {
-      device.structured.safety.crashDetected = false;
-      alertsMap.delete("crash detected");
     }
 
     // Overspeed
     if (prevLatestData.state.reported["255"]) {
-      device.structured.safety.overspeeding = true;
       alertsMap.set("over speeding", {
-        type: "over speeding",
-        unhandled: true,
+        ...common,
+        type: "safety",
+        message: "over speeding",
       });
-    } else {
-      device.structured.safety.overspeeding = false;
-      alertsMap.delete("over speeding");
     }
 
-    device.structured.safety.alerts = [...alertsMap.values()];
+    device.structured.alerts.list = [...alertsMap.values()];
   }
 
   deviceLocsUpdate(device) {
@@ -189,7 +206,7 @@ class TeltonikaController {
   updateDeviceUnstructured(device, data) {
     const prevLatestData = device.unstructured[device.unstructured.length - 1];
     if (prevLatestData.state.reported.ts < data.state.reported.ts) {
-      if (device.unstructured.length == this.messageHistoryCount) {
+      if (device.unstructured.length == this.unstructuredMaxMsg) {
         device.unstructured.shift();
       }
       device.unstructured.push(data);

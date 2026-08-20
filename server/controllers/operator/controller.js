@@ -151,49 +151,34 @@ exports.operatorDashboardStats = async (req, res, next, tController) => {
     const imeis = new Set(vehicles.map((vehicle) => vehicle.device.imei));
 
     const fastDataVehicles = tController.filterDevices(imeis);
+    const reducedInfo = [...fastDataVehicles].reduce(
+      (info, [imei, fdVehicle]) => {
+        (fdVehicle.structured.alerts.list || []).forEach((alert) => {
+          info.alerts[alert.message] = (info.alerts[alert.message] || 0) + 1;
+        });
+        info.status[fdVehicle.structured.general.status] =
+          (info.status[fdVehicle.structured.general.status] || 0) + 1;
+        return info;
+      },
+      {
+        status: {},
+        alerts: {},
+      },
+    );
 
     const totalVehicles = vehicles.length;
-    let activeVehicles = 0;
-    let idleVehicles = 0;
-    let parkedVehicles = 0;
-    let offlineVehicles = 0;
-    let overspeeding = 0;
-    let violategeofence = 0;
-    let crashDetected = 0;
-    let excessiveIdleVehicles = 0;
-    let lowFuelVehicles = 0;
-    let lowBatteryVehicles = 0;
-    let unpluggedVehicles = 0;
-    let towingVehicles = 0;
-
-    fastDataVehicles.forEach((fdVehicle) => {
-      const status = fdVehicle.structured.general.status;
-      const crashReport = fdVehicle.structured.safety.crashDetected;
-      const overspeedingReport = fdVehicle.structured.safety.overspeeding;
-      // const violategeofenceReport = fdVehicle.structured.safety.violategeofence;
-
-      if (status == "active") {
-        activeVehicles += 1;
-      } else if (status == "idle") {
-        idleVehicles += 1;
-      } else if (status == "parked") {
-        parkedVehicles += 1;
-      } else {
-        offlineVehicles += 1;
-      }
-
-      if (crashReport) {
-        crashDetected += 1;
-      }
-
-      if (overspeedingReport) {
-        overspeeding += 1;
-      }
-
-      // if (violategeofenceReport) {
-      //   violategeofence += 1;
-      // }
-    });
+    const activeVehicles = reducedInfo.status["active"] || 0;
+    const idleVehicles = reducedInfo.status["idle"] || 0;
+    const parkedVehicles = reducedInfo.status["parked"] || 0;
+    const offlineVehicles = reducedInfo.status["offline"] || 0;
+    const overspeeding = reducedInfo.alerts["over speeding"] || 0;
+    const violategeofence = reducedInfo.alerts["geofence violation"] || 0;
+    const crashDetected = reducedInfo.alerts["crash detected"] || 0;
+    const excessiveIdleVehicles = reducedInfo.alerts["excessive idle"] || 0;
+    const lowFuelVehicles = reducedInfo.alerts["low fuel"] || 0;
+    const lowBatteryVehicles = reducedInfo.alerts["low battery"] || 0;
+    const unpluggedVehicles = reducedInfo.alerts["unplugged"] || 0;
+    const towingVehicles = reducedInfo.alerts["towing"] || 0;
 
     return res.json({
       ok: true,
@@ -219,7 +204,7 @@ exports.operatorDashboardStats = async (req, res, next, tController) => {
 
 // Operators Misc
 
-exports.totalVehiclesOverview = async (req, res) => {
+exports.totalVehiclesOverview = async (req, res, next, tController) => {
   try {
     const operatorId = req.user.id;
 
@@ -234,7 +219,7 @@ exports.totalVehiclesOverview = async (req, res) => {
     for (const [key, value] of Object.entries(filter)) {
       if (key === "vehicle") {
         vehicleFilter[key] = value;
-      } else if (key.toLowerCase().includes("structuredtrackingdata")) {
+      } else if (key.startsWith("std.")) {
         structuredFilter[key] = value;
       } else {
         otherFilter[key] = value;
@@ -261,32 +246,43 @@ exports.totalVehiclesOverview = async (req, res) => {
 
     const vehicles = await Vehicle.find(queryFilter)
       .select("images registrationNumber make model device")
-      .populate({
-        path: "device",
-        match: { ...structuredFilter },
-        select:
-          "structuredTrackingData.status structuredTrackingData.locs structuredTrackingData.safety.alerts",
-      })
-      .skip(range[0])
-      .limit(range[1])
+      .populate("device", "imei")
       .sort({ [sortField]: sortOrder });
 
-    const total = (
-      await Vehicle.find(queryFilter)
-        .select("_id")
-        .populate({
-          path: "device",
-          match: { ...structuredFilter },
-          select: "_id",
-        })
-    ).filter((ve) => ve.device != null).length;
+    const imeis = new Set(vehicles.map((vehicle) => vehicle.device.imei));
+
+    const fastDataVehicles = tController.filterDevices(imeis);
+
+    const filteredFDVs = new Map(
+      [...fastDataVehicles].filter(([key, value]) => {
+        let cond = true;
+        for (const [oKey, oValue] of Object.entries(structuredFilter)) {
+          const cValue = oKey
+            .replace("std.", "")
+            .split(".")
+            .reduce((forward, fKey) => forward?.[fKey], value.structured);
+          if (cValue != oValue) {
+            cond = false;
+            break;
+          }
+        }
+        return cond;
+      }),
+    );
+
+    const total = filteredFDVs.size;
 
     const data = vehicles
       .map((ve) => ({
         id: ve._id,
         ...ve.toObject(),
+        device: {
+          ...ve.toObject().device,
+          structuredTrackingData: filteredFDVs.get(ve.device.imei)?.structured,
+        },
       }))
-      .filter((ve) => ve.device != null);
+      .filter((ve) => ve.device.structuredTrackingData != null)
+      .slice(range[0], range[1]);
 
     res.setHeader(
       "Content-Range",
@@ -300,13 +296,25 @@ exports.totalVehiclesOverview = async (req, res) => {
   }
 };
 
-exports.fullVehicleDetails = async (req, res) => {
+exports.fullVehicleDetails = async (req, res, next, tController) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id).populate("device");
+    const vehicle = await Vehicle.findById(req.params.id).populate(
+      "device",
+      "imei",
+    );
 
     if (!vehicle) return res.status(404).json({ error: "Not found" });
 
-    const data = { id: vehicle._id, ...vehicle.toObject() };
+    const fastDataVehicle = tController.getDevice(vehicle.device.imei);
+
+    const data = {
+      id: vehicle._id,
+      ...vehicle.toObject(),
+      device: {
+        ...vehicle.toObject().device,
+        structuredTrackingData: fastDataVehicle?.structured,
+      },
+    };
 
     return res.json(data);
   } catch (err) {

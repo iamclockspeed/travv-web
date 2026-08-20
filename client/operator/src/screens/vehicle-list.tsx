@@ -8,7 +8,7 @@ export const ActiveVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehiclesOverview"}
-      filter={{ "structuredTrackingData.status": "active" }}
+      filter={{ "std.general.status": "active" }}
     />
   );
 };
@@ -17,7 +17,7 @@ export const IdleVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehiclesOverview"}
-      filter={{ "structuredTrackingData.status": "idle" }}
+      filter={{ "std.general.status": "idle" }}
     />
   );
 };
@@ -26,7 +26,7 @@ export const ParkedVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehiclesOverview"}
-      filter={{ "structuredTrackingData.status": "parked" }}
+      filter={{ "std.general.status": "parked" }}
     />
   );
 };
@@ -35,7 +35,7 @@ export const OfflineVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehiclesOverview"}
-      filter={{ "structuredTrackingData.status": "offline" }}
+      filter={{ "std.general.status": "offline" }}
     />
   );
 };
@@ -44,7 +44,7 @@ export const OverSpeedingVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehiclesOverview"}
-      filter={{ "structuredTrackingData.safety.alerts.type": "over speeding" }}
+      filter={{ "std.alerts.list.message": "over speeding" }}
     />
   );
 };
@@ -54,7 +54,7 @@ export const GeoFenceViolatingVehicles = () => {
     <VehiclesTableSimple
       resource="totalVehiclesOverview"
       filter={{
-        "structuredTrackingData.safety.alerts.type": "geofence violation",
+        "std.alerts.list.message": "geofence violation",
       }}
     />
   );
@@ -64,7 +64,7 @@ export const CrashDetectedVehicles = () => {
   return (
     <VehiclesTableSimple
       resource={"totalVehiclesOverview"}
-      filter={{ "structuredTrackingData.safety.alerts.type": "crash detected" }}
+      filter={{ "std.alerts.list.message": "crash detected" }}
     />
   );
 };
@@ -74,7 +74,7 @@ export const ExcessiveIdleVehicles = () => {
     <VehiclesTableSimple
       resource="totalVehiclesOverview"
       filter={{
-        "structuredTrackingData.vehavior.alerts.type": "excessive idle",
+        "std.alerts.list.message": "excessive idle",
       }}
     />
   );
@@ -85,7 +85,7 @@ export const LowFuelVehicles = () => {
     <VehiclesTableSimple
       resource="totalVehiclesOverview"
       filter={{
-        "structuredTrackingData.vehavior.alerts.type": "low fuel",
+        "std.alerts.list.message": "low fuel",
       }}
     />
   );
@@ -96,7 +96,7 @@ export const LowBatteryVehicles = () => {
     <VehiclesTableSimple
       resource="totalVehiclesOverview"
       filter={{
-        "structuredTrackingData.health.alerts.type": "low battery",
+        "std.alerts.list.message": "low battery",
       }}
     />
   );
@@ -107,7 +107,7 @@ export const UnpluggedVehicles = () => {
     <VehiclesTableSimple
       resource="totalVehiclesOverview"
       filter={{
-        "structuredTrackingData.health.alerts.type": "unplugged",
+        "std.alerts.list.message": "unplugged",
       }}
     />
   );
@@ -118,7 +118,7 @@ export const TowingVehicles = () => {
     <VehiclesTableSimple
       resource="totalVehiclesOverview"
       filter={{
-        "structuredTrackingData.health.alerts.type": "towing",
+        "std.alerts.list.message": "towing",
       }}
     />
   );

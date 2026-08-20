@@ -147,7 +147,7 @@ const VehicleTable: React.FC = () => {
           label="Status"
           render={(record) => (
             <StatusWithIcon
-              status={record.device?.structuredTrackingData?.status}
+              status={record.device?.structuredTrackingData?.general?.status}
             />
           )}
         />

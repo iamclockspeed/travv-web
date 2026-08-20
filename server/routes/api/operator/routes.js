@@ -54,13 +54,27 @@ module.exports = function (options = {}) {
   router.get(
     API_PREFIX + "/totalVehiclesOverview",
     verifyAuthToken,
-    operatorApiController.totalVehiclesOverview,
+    (req, res, next) => {
+      operatorApiController.totalVehiclesOverview(
+        req,
+        res,
+        next,
+        options.teltonikaController,
+      );
+    },
   );
 
   router.get(
     API_PREFIX + "/full-vehicle-details/:id",
     verifyAuthToken,
-    operatorApiController.fullVehicleDetails,
+    (req, res, next) => {
+      operatorApiController.fullVehicleDetails(
+        req,
+        res,
+        next,
+        options.teltonikaController,
+      );
+    },
   );
 
   router.get(
