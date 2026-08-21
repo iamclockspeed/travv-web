@@ -257,15 +257,15 @@ exports.countVehicles = async (req, res) => {
   try {
     const total = await Vehicle.countDocuments();
 
-    const active = await Device.countDocuments({
-      "std.status": "active",
+    const offline = await Device.countDocuments({
+      "structuredTrackingData.general.status": "offline",
     });
 
     return res.json({
       ok: true,
       total,
-      active,
-      offline: total - active,
+      active: total - offline,
+      offline,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -487,20 +487,24 @@ exports.uploadVehiclesImages = [
 
 exports.createDevice = async (req, res) => {
   try {
+    const now = Date.now();
     const emptyStd = {
-      safety: {
-        alerts: [],
-        crashDetected: false,
-        overspeeding: false,
-        geofenceviolation: false,
+      alerts: {
+        ts: now,
+        list: [],
       },
       locs: {
-        timestamp: Date.now(),
-        lat: 21.5300211,
-        lng: 83.858938,
-        alt: 0,
+        ts: now,
+        lat: 0.0,
+        lng: 0.0,
+        alt: 0.0,
       },
-      status: "offline",
+      general: {
+        ts: now,
+        status: "offline",
+        ignition: "off",
+        moving: "stopped",
+      },
     };
 
     req.body.structuredTrackingData = emptyStd;
