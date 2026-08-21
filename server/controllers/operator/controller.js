@@ -255,18 +255,41 @@ exports.totalVehiclesOverview = async (req, res, next, tController) => {
 
     const filteredFDVs = new Map(
       [...fastDataVehicles].filter(([key, value]) => {
-        let cond = true;
         for (const [oKey, oValue] of Object.entries(structuredFilter)) {
-          const cValue = oKey
-            .replace("std.", "")
-            .split(".")
-            .reduce((forward, fKey) => forward?.[fKey], value.structured);
-          if (cValue != oValue) {
-            cond = false;
-            break;
+          const keys = oKey.replace("std.", "").split(".");
+          const listIndex = keys.indexOf("list");
+
+          if (listIndex !== -1) {
+            const parent = keys
+              .slice(0, listIndex)
+              .reduce((forward, fKey) => forward?.[fKey], value.structured);
+
+            const list = parent?.list;
+
+            const matched = list?.some((item) => {
+              const itemValue = keys
+                .slice(listIndex + 1)
+                .reduce((forward, fKey) => forward?.[fKey], item);
+
+              return itemValue === oValue;
+            });
+
+            if (!matched) {
+              return false;
+            }
+          } else {
+            const cValue = keys.reduce(
+              (forward, fKey) => forward?.[fKey],
+              value.structured,
+            );
+
+            if (cValue !== oValue) {
+              return false;
+            }
           }
         }
-        return cond;
+
+        return true;
       }),
     );
 

@@ -412,6 +412,7 @@ class TeltonikaController {
             `IMEI=${deviceIMEI} | ` +
             `ts=${ts} | ` +
             `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
+          JSON.stringify(payload),
         );
 
         this.updateDevice(deviceIMEI, payload);
@@ -421,6 +422,7 @@ class TeltonikaController {
             `IMEI=${deviceIMEI} | ` +
             `ts=${ts} | ` +
             `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
+          JSON.stringify(payload),
         );
       }
     });
@@ -654,6 +656,8 @@ class TeltonikaController {
       return;
     }
 
+    console.log(reported.evt);
+
     const alerts = device.structured.alerts;
 
     alerts.ts = Number(reported.ts) || Date.now();
@@ -688,7 +692,7 @@ class TeltonikaController {
      * This function is only called for a NEW packet,
      * not every forced refresh.
      */
-    if (Number(reported["247"]) === 1) {
+    if (Number(reported["247"]) > 0) {
       alertsMap.set("crash detected", {
         ...common,
 
@@ -706,6 +710,18 @@ class TeltonikaController {
 
         type: "safety",
         message: "over speeding",
+      });
+    }
+
+    /*
+     * Unplug detection.
+     */
+    if (Number(reported["252"]) === 1) {
+      alertsMap.set("unplugged", {
+        ...common,
+
+        type: "health",
+        message: "unplugged",
       });
     }
 

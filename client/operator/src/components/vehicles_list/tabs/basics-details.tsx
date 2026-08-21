@@ -23,7 +23,7 @@ const BasicDetailsTab: React.FC<Props> = ({ vehicle }) => {
       <Typography>
         Status:{" "}
         <StatusWithIcon
-          status={vehicle.device?.structuredTrackingData?.status}
+          status={vehicle.device?.structuredTrackingData?.general?.status}
         />
       </Typography>
       <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>

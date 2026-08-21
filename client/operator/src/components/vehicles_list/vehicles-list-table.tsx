@@ -84,9 +84,8 @@ const VehicleTable: React.FC = () => {
   ) => {
     if (selectedVehicle?.id === vehicleId) {
       selectedVehicle.device.structuredTrackingData ??= {};
-      selectedVehicle.device.structuredTrackingData.safety ??= {};
-      selectedVehicle.device.structuredTrackingData.safety.alerts =
-        updatedAlerts;
+      selectedVehicle.device.structuredTrackingData.alerts ??= {};
+      selectedVehicle.device.structuredTrackingData.alerts.list = updatedAlerts;
 
       setSelectedVehicle({ ...selectedVehicle });
     }

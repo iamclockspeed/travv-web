@@ -11,14 +11,18 @@ export interface Vehicle {
   device: {
     structuredTrackingData?: {
       locs?: {
-        timestamp: number;
+        ts: number;
         lat: number;
         lng: number;
         alt: number;
       };
-      status?: string;
-      safety?: {
-        alerts?: VehicleAlert[];
+      general?: {
+        ts?: number;
+        status?: string;
+      };
+      alerts?: {
+        ts?: number;
+        list?: VehicleAlert[];
       };
     };
   };
@@ -39,8 +43,14 @@ export interface Vehicle {
 
 export interface VehicleAlert {
   type: string;
-  time: string;
-  location: string;
+  message: string;
+  ts: string;
+  locs: {
+    ts: number;
+    lat: number;
+    lng: number;
+    alt: number;
+  };
   unhandled: boolean;
 }
 
