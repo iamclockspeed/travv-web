@@ -20,7 +20,7 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import type { Vehicle, VehicleAlert } from "./types-vehicles";
+import type { Vehicle } from "./types-vehicles";
 import {
   AlertsWithBadges,
   LocationWithLink,
@@ -76,19 +76,6 @@ const VehicleTable: React.FC = () => {
       return isDataLoading;
     }
     return fullData?.data;
-  };
-
-  const handleAlertUpdate = (
-    vehicleId: number,
-    updatedAlerts: VehicleAlert[],
-  ) => {
-    if (selectedVehicle?.id === vehicleId) {
-      selectedVehicle.device.structuredTrackingData ??= {};
-      selectedVehicle.device.structuredTrackingData.alerts ??= {};
-      selectedVehicle.device.structuredTrackingData.alerts.list = updatedAlerts;
-
-      setSelectedVehicle({ ...selectedVehicle });
-    }
   };
 
   if (isLoading)
@@ -159,7 +146,6 @@ const VehicleTable: React.FC = () => {
         open={open}
         onClose={() => setOpen(false)}
         vehicle={selectedVehicle}
-        onAlertUpdate={handleAlertUpdate}
         onFullDataFetch={handleFullDataFetch}
       />
     </>

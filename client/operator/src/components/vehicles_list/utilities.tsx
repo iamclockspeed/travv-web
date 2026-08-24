@@ -45,9 +45,7 @@ export const StatusWithIcon = ({ status }: { status?: string }) => {
 export const AlertsWithBadges = () => {
   const record = useRecordContext<Vehicle>();
   const alerts =
-    record?.device?.structuredTrackingData?.safety?.alerts?.filter(
-      (a) => a?.unhandled,
-    ) || [];
+    record?.device?.structuredTrackingData?.alerts?.list || [];
   const MAX_VISIBLE_ALERTS = 2;
 
   return (
@@ -55,7 +53,7 @@ export const AlertsWithBadges = () => {
       {alerts.length > 0 ? (
         <>
           {alerts.slice(0, MAX_VISIBLE_ALERTS).map((a, i) => {
-            const { icon, color } = ALERT_MAP[a.type.toLowerCase()] || {
+            const { icon, color } = ALERT_MAP[a.message.toLowerCase()] || {
               icon: "⚠️",
               color: "#7f8c8d",
             };
@@ -65,7 +63,7 @@ export const AlertsWithBadges = () => {
                 key={i}
                 style={{ ...BADGE_BASE_STYLE, backgroundColor: color }}
               >
-                {icon} {a.type}
+                {icon} {a.message}
               </span>
             );
           })}
@@ -74,7 +72,7 @@ export const AlertsWithBadges = () => {
               style={{ ...BADGE_BASE_STYLE, backgroundColor: "#95a5a6" }}
               title={alerts
                 .slice(MAX_VISIBLE_ALERTS)
-                .map((a) => a.type)
+                .map((a) => a.message)
                 .join(", ")}
             >
               +{alerts.length - MAX_VISIBLE_ALERTS} more

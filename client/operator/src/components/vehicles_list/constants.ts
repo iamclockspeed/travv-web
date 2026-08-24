@@ -13,12 +13,11 @@ export const BADGE_BASE_STYLE = {
 
 export const ALERT_MAP: Record<string, { icon: string; color: string }> = {
   "over speeding": { icon: "🛑", color: "#e74c3c" },
-  "geo fence violation": { icon: "📍", color: "#e74c3c" },
+  "geofence violation": { icon: "📍", color: "#e74c3c" },
   "crash detected": { icon: "🚨", color: "#e74c3c" },
-  "excessive idling": { icon: "⏳", color: "#f39c12" },
+  "excessive idle": { icon: "⏳", color: "#f39c12" },
   "low fuel": { icon: "⛽", color: "#f39c12" },
-  "engine breakdown": { icon: "🛠️", color: "#c0392b" },
-  "unplug & towing": { icon: "🚛", color: "#c0392b" },
-  "low battery": { icon: "🔋", color: "#c0392b" },
-  "upcoming maintenance": { icon: "⚙️", color: "#c0392b" },
+  "low battery": { icon: "🔋", color: "#c02b89" },
+  unplugged: { icon: "🔌", color: "#c02b89" },
+  towing: { icon: "🪝", color: "#c02b89" },
 };

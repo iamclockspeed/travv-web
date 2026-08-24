@@ -1,5 +1,6 @@
 const Device = require("../models/devices");
 const DeviceMessage = require("../models/devicemessage");
+const DeviceAlert = require("../models/devicealert");
 
 class TeltonikaController {
   constructor(options = {}) {
@@ -406,24 +407,24 @@ class TeltonikaController {
         return;
       }
 
-      if (this.isRealtimePacket(ts)) {
-        console.log(
-          `[Teltonika] ACCEPTED payload | ` +
-            `IMEI=${deviceIMEI} | ` +
-            `ts=${ts} | ` +
-            `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
-          JSON.stringify(payload),
-        );
+      if (this.isAcceptablePacket(ts)) {
+        // console.log(
+        //   `[Teltonika] ACCEPTED payload | ` +
+        //     `IMEI=${deviceIMEI} | ` +
+        //     `ts=${ts} | ` +
+        //     `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
+        //   JSON.stringify(payload),
+        // );
 
         this.updateDevice(deviceIMEI, payload);
       } else {
-        console.log(
-          `[Teltonika] Rejected payload | ` +
-            `IMEI=${deviceIMEI} | ` +
-            `ts=${ts} | ` +
-            `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
-          JSON.stringify(payload),
-        );
+        // console.log(
+        //   `[Teltonika] Rejected payload | ` +
+        //     `IMEI=${deviceIMEI} | ` +
+        //     `ts=${ts} | ` +
+        //     `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
+        //   JSON.stringify(payload),
+        // );
       }
     });
 
@@ -656,7 +657,9 @@ class TeltonikaController {
       return;
     }
 
-    console.log(reported.evt);
+    if (reported.evt !== 0) {
+      console.log(reported.evt, ": " + reported[[reported.evt]]);
+    }
 
     const alerts = device.structured.alerts;
 
@@ -682,8 +685,6 @@ class TeltonikaController {
 
         alt: Number.isFinite(alt) ? alt : 0,
       },
-
-      unhandled: true,
     };
 
     /*
@@ -699,6 +700,14 @@ class TeltonikaController {
         type: "safety",
         message: "crash detected",
       });
+    } else {
+      const lastAlertTS = alertsMap.get("crash detected")?.ts;
+      if (lastAlertTS) {
+        const ONE_DAY = 24 * 60 * 60 * 1000;
+        if (Date.now() - lastAlertTS >= ONE_DAY) {
+          alertsMap.delete("crash detected");
+        }
+      }
     }
 
     /*
@@ -711,6 +720,22 @@ class TeltonikaController {
         type: "safety",
         message: "over speeding",
       });
+    } else if (Number(reported["255"]) === 0) {
+      alertsMap.delete("over speeding");
+    }
+
+    /*
+     * Low Batter (Currently GPS Battery).
+     */
+    if (Number(reported["113"]) <= 15) {
+      alertsMap.set("low battery", {
+        ...common,
+
+        type: "health",
+        message: "low battery",
+      });
+    } else if (Number(reported["113"]) >= 50) {
+      alertsMap.delete("low battery");
     }
 
     /*
@@ -723,6 +748,8 @@ class TeltonikaController {
         type: "health",
         message: "unplugged",
       });
+    } else if (Number(reported["252"]) === 0) {
+      alertsMap.delete("unplugged");
     }
 
     alerts.list = [...alertsMap.values()];
@@ -734,24 +761,58 @@ class TeltonikaController {
 
   updateDeviceUnstructured(device, data) {
     const incomingTs = Number(data?.state?.reported?.ts);
+    const incomingPr = Number(data?.state?.reported?.pr ?? 0);
 
+    // Invalid timestamp → reject packet.
     if (!Number.isFinite(incomingTs)) {
       return false;
     }
 
     const list = device.unstructured;
 
-    const latest = list[list.length - 1];
+    // No previous packets → accept.
+    if (!list.length) {
+      list.push(data);
+      return true;
+    }
+
+    // Because the array is always time ordered,
+    // the last item is the newest packet.
+    const latestIndex = list.length - 1;
+    const latest = list[latestIndex];
 
     const latestTs = Number(latest?.state?.reported?.ts);
+    const latestPr = Number(latest?.state?.reported?.pr ?? 0);
 
-    /*
-     * Ignore duplicate/older packet.
-     */
-    if (Number.isFinite(latestTs) && incomingTs <= latestTs) {
+    // If the existing timestamp is invalid, replace it.
+    if (!Number.isFinite(latestTs)) {
+      list[latestIndex] = data;
+      return true;
+    }
+
+    // ------------------------------------------------------------
+    // 1. Incoming packet is older → reject.
+    // ------------------------------------------------------------
+    if (incomingTs < latestTs) {
       return false;
     }
 
+    // ------------------------------------------------------------
+    // 2. Same timestamp → higher Teltonika priority wins.
+    // ------------------------------------------------------------
+    if (incomingTs === latestTs) {
+      if (incomingPr > latestPr) {
+        list[latestIndex] = data;
+        return true;
+      }
+
+      // Same or lower priority → reject.
+      return false;
+    }
+
+    // ------------------------------------------------------------
+    // 3. Incoming packet is newer → accept.
+    // ------------------------------------------------------------
     if (list.length >= this.unstructuredMaxMsg) {
       list.shift();
     }
@@ -793,6 +854,7 @@ class TeltonikaController {
 
       const deviceUpdates = [];
       const deviceMessageOps = [];
+      const deviceAlertOps = [];
 
       for (const [imei, data] of devices) {
         /*
@@ -844,6 +906,39 @@ class TeltonikaController {
             },
           });
         }
+
+        /*
+         * Save alerts.
+         */
+        for (const item of data.structured.alerts.list || []) {
+          const ts = Number(item?.ts);
+
+          if (!Number.isFinite(ts)) {
+            continue;
+          }
+
+          deviceAlertOps.push({
+            updateOne: {
+              filter: {
+                "meta.imei": imei,
+                "meta.ts": ts,
+              },
+
+              update: {
+                $setOnInsert: {
+                  meta: {
+                    imei,
+                    ts,
+                  },
+
+                  body: item,
+                },
+              },
+
+              upsert: true,
+            },
+          });
+        }
       }
 
       const operations = [];
@@ -864,12 +959,21 @@ class TeltonikaController {
         );
       }
 
+      if (deviceAlertOps.length) {
+        operations.push(
+          DeviceAlert.bulkWrite(deviceAlertOps, {
+            ordered: false,
+          }),
+        );
+      }
+
       await Promise.all(operations);
 
       console.log(
         `[Teltonika] DB sync complete | ` +
           `devices=${deviceUpdates.length} | ` +
-          `messages=${deviceMessageOps.length}`,
+          `messages=${deviceMessageOps.length}` +
+          `alerts=${deviceAlertOps.length}`,
       );
     } catch (error) {
       console.error("[Teltonika] DB persistence failed:", error);
@@ -879,10 +983,10 @@ class TeltonikaController {
   }
 
   // ============================================================
-  // REALTIME CHECK
+  // PACKET FILTER
   // ============================================================
 
-  isRealtimePacket(ts, windowSeconds = 5) {
+  isAcceptablePacket(ts, windowSeconds = 30) {
     const timestamp = Number(ts);
 
     if (!Number.isFinite(timestamp)) {

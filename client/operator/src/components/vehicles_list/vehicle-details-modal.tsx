@@ -30,7 +30,6 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
   open,
   onClose,
   vehicle,
-  onAlertUpdate,
   onFullDataFetch,
 }) => {
   const [tabIndex, setTabIndex] = useState(0);
@@ -86,10 +85,7 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
 
         {/* Alert History */}
         <TabPanel value={tabIndex} index={1}>
-          <AlertsHistoryTab
-            vehicle={fullVehicleData}
-            onAlertUpdate={onAlertUpdate}
-          />
+          <AlertsHistoryTab vehicle={fullVehicleData} />
         </TabPanel>
 
         {/* Documents */}

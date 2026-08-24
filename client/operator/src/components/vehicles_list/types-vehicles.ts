@@ -25,6 +25,7 @@ export interface Vehicle {
         list?: VehicleAlert[];
       };
     };
+    alertHistory: VehicleAlert[];
   };
   fuelLogs: FuelLog[];
   trips: Trip[];
@@ -51,7 +52,6 @@ export interface VehicleAlert {
     lng: number;
     alt: number;
   };
-  unhandled: boolean;
 }
 
 interface FuelLog {

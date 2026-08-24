@@ -4,6 +4,7 @@ const Operator = require("../../models/operators");
 const Vehicle = require("../../models/vehicles");
 const Feedback = require("../../models/feedbacks");
 const Support = require("../../models/supports");
+const DeviceAlert = require("../../models/devicealert");
 
 //----------------------------------  Operators Panel Functions ----------------------------------//
 
@@ -328,6 +329,20 @@ exports.fullVehicleDetails = async (req, res, next, tController) => {
 
     if (!vehicle) return res.status(404).json({ error: "Not found" });
 
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    const alertHistoryFetch = await DeviceAlert.find(
+      {
+        "meta.imei": vehicle.device.imei,
+        "meta.ts": { $gte: sevenDaysAgo },
+      },
+      { body: 1, _id: 0 },
+    )
+      .sort({ "meta.ts": -1 })
+      .lean();
+
+    const alertHistory = alertHistoryFetch.map((alert) => alert.body);
+
     const fastDataVehicle = tController.getDevice(vehicle.device.imei);
 
     const data = {
@@ -336,6 +351,7 @@ exports.fullVehicleDetails = async (req, res, next, tController) => {
       device: {
         ...vehicle.toObject().device,
         structuredTrackingData: fastDataVehicle?.structured,
+        alertHistory,
       },
     };
 

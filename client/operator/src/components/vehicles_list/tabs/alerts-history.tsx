@@ -1,58 +1,27 @@
 import { useState } from "react";
-import { Button } from "react-admin";
 import { Box, Typography, IconButton } from "@mui/material";
-import type { Vehicle, VehicleAlert } from "../types-vehicles";
+import type { Vehicle } from "../types-vehicles";
 import { ALERT_MAP } from "../constants";
 import MapIcon from "@mui/icons-material/Map";
 
 interface Props {
   vehicle: Vehicle;
-  onAlertUpdate?: (vehicleId: number, alert: VehicleAlert[]) => void;
 }
 
 /* Alerts History */
-const AlertsHistoryTab: React.FC<Props> = ({ vehicle, onAlertUpdate }) => {
-  const [alertHistory, setAlertHistory] = useState(
-    vehicle.device.structuredTrackingData?.safety?.alerts
-      ? vehicle.device.structuredTrackingData.safety.alerts
-      : [],
-  );
+const AlertsHistoryTab: React.FC<Props> = ({ vehicle }) => {
+  const [alertHistory] = useState(vehicle.device.alertHistory || []);
 
   return (
     <>
       <Typography variant="subtitle1" sx={{ mb: 1 }}>
-        🚨 Alert Summary (Last 30 Days)
+        🚨 Total Alerts: {alertHistory.length}
       </Typography>
       <Box sx={{ mb: 2 }}>
-        <Typography variant="body2">
-          Unhandled Alerts: {alertHistory.filter((a) => a.unhandled).length}
-        </Typography>
-        <Typography variant="body2">
-          Total Alerts: {alertHistory.length}
-        </Typography>
         <Typography variant="caption" color="text.secondary">
-          ⏳ Only alerts from the last 30 days are shown
+          ⏳ Only alerts from the last 7 days are shown
         </Typography>
       </Box>
-
-      {alertHistory.some((a) => a.unhandled) && (
-        <Button
-          variant="contained"
-          size="small"
-          color="primary"
-          onClick={() => {
-            const updated = alertHistory.map((a) =>
-              a.unhandled ? { ...a, unhandled: false } : a,
-            );
-            setAlertHistory(updated);
-            onAlertUpdate?.(vehicle.id, updated);
-            // await api.markAllAlertsHandled(vehicle.id);
-          }}
-          sx={{ mb: 2, alignSelf: "flex-start" }}
-        >
-          Handle All Alerts
-        </Button>
-      )}
 
       {alertHistory.length > 0 ? (
         <Box
@@ -66,18 +35,10 @@ const AlertsHistoryTab: React.FC<Props> = ({ vehicle, onAlertUpdate }) => {
           }}
         >
           {alertHistory.map((alert, i) => {
-            const { type, time, location, unhandled } = alert;
-            const { icon, color } = ALERT_MAP[type.toLowerCase()] || {
+            const { ts, locs, message } = alert;
+            const { icon, color } = ALERT_MAP[message.toLowerCase()] || {
               icon: "⚠️",
               color: "#7f8c8d",
-            };
-
-            const handleMarkAsHandled = () => {
-              const updated = [...alertHistory];
-              updated[i] = { ...alert, unhandled: false };
-              setAlertHistory(updated);
-              onAlertUpdate?.(vehicle.id, updated);
-              // await api.markAlertHandled(alert.id);
             };
 
             return (
@@ -99,17 +60,14 @@ const AlertsHistoryTab: React.FC<Props> = ({ vehicle, onAlertUpdate }) => {
                   <Typography
                     sx={{ fontWeight: 500, textTransform: "capitalize" }}
                   >
-                    {type} -{" "}
-                    <span style={{ color: unhandled ? "#e74c3c" : "#2ecc71" }}>
-                      {unhandled ? "Unhandled" : "Resolved"}
-                    </span>
+                    {message}
                   </Typography>
 
                   <Typography variant="caption" color="text.secondary">
-                    📅 {new Date(time).toLocaleString()}
+                    📅 {new Date(ts).toLocaleString()}
                   </Typography>
 
-                  {location && (
+                  {locs && (
                     <Typography
                       variant="body2"
                       sx={{ display: "flex", alignItems: "center", gap: 1 }}
@@ -123,17 +81,6 @@ const AlertsHistoryTab: React.FC<Props> = ({ vehicle, onAlertUpdate }) => {
                       </IconButton>
                       Location
                     </Typography>
-                  )}
-
-                  {unhandled && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={handleMarkAsHandled}
-                      sx={{ mt: 1 }}
-                    >
-                      Mark as Handled
-                    </Button>
                   )}
                 </Box>
               </Box>
