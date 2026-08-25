@@ -19,7 +19,7 @@ const AlertsHistoryTab: React.FC<Props> = ({ vehicle }) => {
       </Typography>
       <Box sx={{ mb: 2 }}>
         <Typography variant="caption" color="text.secondary">
-          ⏳ Only alerts from the last 7 days are shown
+          ⏳ Only alerts from the last 3 days are shown
         </Typography>
       </Box>
 

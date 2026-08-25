@@ -1,12 +1,16 @@
 const Device = require("../models/devices");
 const DeviceMessage = require("../models/devicemessage");
 const DeviceAlert = require("../models/devicealert");
+const VehicleRoute = require("../models/vehicleroute");
+const Vehicle = require("../models/vehicles");
 
 class TeltonikaController {
   constructor(options = {}) {
     // DB connection status closure.
     // Always call this as this.isDBConnected().
     this.isDBConnected = options.isDBConnected;
+
+    this.routeWidthMeters = options.routeWidthMeters ?? 30;
 
     this.unstructuredMaxMsg = 10;
 
@@ -25,6 +29,8 @@ class TeltonikaController {
 
     this.fastData = new Map();
     this.fastData.set("devices", new Map());
+    this.fastData.set("routes", new Map());
+    this.fastData.set("routesByImei", new Map());
 
     this.tracker = null;
 
@@ -60,15 +66,6 @@ class TeltonikaController {
 
     /*
      * Recalculate status frequently.
-     *
-     * Example:
-     *
-     * packet at 12:00:00
-     * active at 12:00:00
-     * idle at 12:00:05
-     * offline at 12:00:20
-     *
-     * This works even if no new packets arrive.
      */
     this.startForcedRefresh();
 
@@ -257,6 +254,8 @@ class TeltonikaController {
       hydratedDevices.set(imei, device);
     }
 
+    await this.hydrateFromPersistentStorageOnDemand();
+
     /*
      * Atomic-ish replacement of the in-memory device map.
      *
@@ -266,6 +265,65 @@ class TeltonikaController {
     this.fastData.set("devices", hydratedDevices);
 
     console.log(`[Teltonika] Hydrated ` + `${hydratedDevices.size} devices`);
+  }
+
+  async hydrateFromPersistentStorageOnDemand() {
+    // Load all routes
+    const routes = await VehicleRoute.find({}).lean();
+
+    const hydratedRoutes = new Map();
+
+    for (const route of routes) {
+      if (!route?._id) continue;
+
+      const routeId = String(route._id);
+
+      /**
+       * routeId -> route.pathData
+       */
+      hydratedRoutes.set(routeId, route.pathData);
+    }
+
+    // Load vehicles with their devices
+    const vehicles = await Vehicle.find({})
+      .select("device routes")
+      .populate("device", "imei")
+      .lean();
+
+    const hydratedRoutesByImei = new Map();
+
+    for (const vehicle of vehicles) {
+      const imei = vehicle?.device?.imei;
+
+      if (!imei) continue;
+
+      const vehicleRoutes = [];
+
+      for (const routeId of vehicle.routes || []) {
+        const pathData = hydratedRoutes.get(String(routeId));
+
+        if (pathData) {
+          vehicleRoutes.push(pathData);
+        }
+      }
+
+      /**
+       * imei -> [route.pathData, ...]
+       */
+      hydratedRoutesByImei.set(imei, vehicleRoutes);
+    }
+
+    /**
+     * Atomic-ish replacement of the in-memory maps.
+     * Replace only after complete DB hydration succeeds.
+     */
+    this.fastData.set("routes", hydratedRoutes);
+    this.fastData.set("routesByImei", hydratedRoutesByImei);
+
+    console.log(`[Teltonika] Hydrated ${hydratedRoutes.size} routes`);
+    console.log(
+      `[Teltonika] Hydrated ${hydratedRoutesByImei.size} vehicle route mappings`,
+    );
   }
 
   async loadLatestMessages(imeis) {
@@ -466,6 +524,12 @@ class TeltonikaController {
     return new Map(filtered);
   }
 
+  getRoutesForDevice(imei) {
+    const routesByImei = this.fastData.get("routesByImei");
+
+    return routesByImei?.get(imei) || [];
+  }
+
   // ============================================================
   // DEVICE UPDATE
   // ============================================================
@@ -542,7 +606,7 @@ class TeltonikaController {
      * Packet/event based.
      */
     if (updateAlerts) {
-      this.deviceAlertsUpdate(device);
+      this.deviceAlertsUpdate(device, imei);
     }
   }
 
@@ -648,7 +712,7 @@ class TeltonikaController {
   // ALERTS
   // ============================================================
 
-  deviceAlertsUpdate(device) {
+  deviceAlertsUpdate(device, imei) {
     const latest = device.unstructured[device.unstructured.length - 1];
 
     const reported = latest?.state?.reported;
@@ -688,10 +752,39 @@ class TeltonikaController {
     };
 
     /*
+     * Overspeed.
+     */
+    if (Number(reported["255"]) === 1) {
+      alertsMap.set("over speeding", {
+        ...common,
+
+        type: "safety",
+        message: "over speeding",
+      });
+    } else if (Number(reported["255"]) === 0) {
+      alertsMap.delete("over speeding");
+    }
+
+    const routeViolation = this.checkRouteViolation(imei, {
+      lat,
+      lng,
+    });
+
+    if (routeViolation) {
+      if (!alertsMap.has("geofence violation")) {
+        alertsMap.set("geofence violation", {
+          ...common,
+          type: "safety",
+          message: "geofence violation",
+        });
+      }
+    } else {
+      alertsMap.delete("geofence violation");
+    }
+
+    /*
      * Crash.
      *
-     * This function is only called for a NEW packet,
-     * not every forced refresh.
      */
     if (Number(reported["247"]) > 0) {
       alertsMap.set("crash detected", {
@@ -711,30 +804,33 @@ class TeltonikaController {
     }
 
     /*
-     * Overspeed.
+     * Excessive Idle
      */
-    if (Number(reported["255"]) === 1) {
-      alertsMap.set("over speeding", {
+    if (Number(reported["251"]) === 1) {
+      alertsMap.set("excessive idle", {
         ...common,
 
-        type: "safety",
-        message: "over speeding",
+        type: "behaviour",
+        message: "excessive idle",
       });
-    } else if (Number(reported["255"]) === 0) {
-      alertsMap.delete("over speeding");
+    } else if (Number(reported["251"]) === 0) {
+      alertsMap.delete("excessive idle");
     }
 
     /*
      * Low Batter (Currently GPS Battery).
      */
-    if (Number(reported["113"]) <= 15) {
-      alertsMap.set("low battery", {
-        ...common,
+    const battery = Number(reported["113"]);
 
-        type: "health",
-        message: "low battery",
-      });
-    } else if (Number(reported["113"]) >= 50) {
+    if (battery <= 15) {
+      if (!alertsMap.has("low battery")) {
+        alertsMap.set("low battery", {
+          ...common,
+          type: "health",
+          message: "low battery",
+        });
+      }
+    } else if (battery >= 50) {
       alertsMap.delete("low battery");
     }
 
@@ -745,14 +841,164 @@ class TeltonikaController {
       alertsMap.set("unplugged", {
         ...common,
 
-        type: "health",
+        type: "maintenance",
         message: "unplugged",
       });
     } else if (Number(reported["252"]) === 0) {
       alertsMap.delete("unplugged");
     }
 
+    /*
+     * Towing detection.
+     */
+    if (Number(reported["246"]) === 1) {
+      alertsMap.set("towing", {
+        ...common,
+
+        type: "maintenance",
+        message: "towing",
+      });
+    } else if (Number(reported["246"]) === 0) {
+      alertsMap.delete("towing");
+    }
+
     alerts.list = [...alertsMap.values()];
+  }
+
+  // ============================================================
+  // GEO FENCE VIOLATION DETECTION HELPERS
+  // ============================================================
+
+  checkRouteViolation(imei, point) {
+    const routes = this.getRoutesForDevice(imei);
+
+    // No routes assigned = no route violation
+    if (!routes.length) {
+      return false;
+    }
+
+    const insideAnyRoute = routes.some((route) => {
+      const halfWidthMeters =
+        route?.routeWidthMeters || this.routeWidthMeters / 2;
+      return this.isPointInsideRoute(point, route.path, halfWidthMeters);
+    });
+
+    return !insideAnyRoute;
+  }
+
+  /**
+   * Returns true when the vehicle point is inside
+   * the corridor around the route centerline.
+   *
+   * route = [
+   *   {
+   *     coordinates: {
+   *       longitude,
+   *       latitude
+   *     }
+   *   },
+   *   ...
+   * ]
+   */
+  isPointInsideRoute(point, route, thresholdMeters) {
+    if (
+      !Number.isFinite(point?.lat) ||
+      !Number.isFinite(point?.lng) ||
+      !Array.isArray(route) ||
+      route.length < 2
+    ) {
+      return false;
+    }
+
+    let nearestDistance = Infinity;
+
+    for (let i = 0; i < route.length - 1; i++) {
+      const a = route[i]?.coordinates;
+      const b = route[i + 1]?.coordinates;
+
+      if (!a || !b) {
+        continue;
+      }
+
+      const distance = this.distancePointToSegmentMeters(
+        point.lat,
+        point.lng,
+        Number(a.latitude),
+        Number(a.longitude),
+        Number(b.latitude),
+        Number(b.longitude),
+      );
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+      }
+
+      // We already know the vehicle is inside.
+      if (nearestDistance <= thresholdMeters) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Distance from a geographic point to a line segment.
+   *
+   * Uses a local equirectangular projection, which is
+   * sufficiently accurate for short road segments.
+   */
+  distancePointToSegmentMeters(
+    pointLat,
+    pointLng,
+    startLat,
+    startLng,
+    endLat,
+    endLng,
+  ) {
+    const R = 6371000; // Earth radius in meters
+
+    const lat0 = this.toRadians((pointLat + startLat + endLat) / 3);
+
+    const cosLat = Math.cos(lat0);
+
+    // Convert coordinates to local meters.
+    const px = this.toRadians(pointLng) * R * cosLat;
+    const py = this.toRadians(pointLat) * R;
+
+    const ax = this.toRadians(startLng) * R * cosLat;
+    const ay = this.toRadians(startLat) * R;
+
+    const bx = this.toRadians(endLng) * R * cosLat;
+    const by = this.toRadians(endLat) * R;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const abSquared = abx * abx + aby * aby;
+
+    // Degenerate segment.
+    if (abSquared === 0) {
+      return Math.hypot(apx, apy);
+    }
+
+    // Projection of P onto AB.
+    let t = (apx * abx + apy * aby) / abSquared;
+
+    // Clamp projection to the segment.
+    t = Math.max(0, Math.min(1, t));
+
+    const closestX = ax + t * abx;
+    const closestY = ay + t * aby;
+
+    return Math.hypot(px - closestX, py - closestY);
+  }
+
+  toRadians(degrees) {
+    return (degrees * Math.PI) / 180;
   }
 
   // ============================================================
@@ -972,7 +1218,7 @@ class TeltonikaController {
       console.log(
         `[Teltonika] DB sync complete | ` +
           `devices=${deviceUpdates.length} | ` +
-          `messages=${deviceMessageOps.length}` +
+          `messages=${deviceMessageOps.length} | ` +
           `alerts=${deviceAlertOps.length}`,
       );
     } catch (error) {

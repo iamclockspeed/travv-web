@@ -362,37 +362,65 @@ exports.updateVehicle = async (req, res) => {
   try {
     const { device: deviceId, operator: operatorId, ...updateData } = req.body;
 
-    let vehicle = await Vehicle.findById(req.params.id);
-    if (!vehicle) return res.status(404).json({ error: "Vehicle not found" });
+    const vehicle = await Vehicle.findById(req.params.id);
 
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+
+    // Update device
     if (
       Object.prototype.toString.call(deviceId) !== "[object Object]" &&
       deviceId !== undefined
     ) {
-      if (vehicle.device && vehicle.device.toString() !== deviceId) {
-        const oldDevice = await Device.findById(vehicle.device).select(
-          "vehicle",
-        );
-        if (oldDevice) {
-          oldDevice.vehicle = null;
-          await oldDevice.save();
+      const currentDeviceId = vehicle.device?.toString();
+      const requestedDeviceId = deviceId?.toString();
+
+      // Only process if device actually changed
+      if (currentDeviceId !== requestedDeviceId) {
+        let newDevice = null;
+
+        // Validate new device first
+        if (requestedDeviceId) {
+          newDevice =
+            await Device.findById(requestedDeviceId).select("vehicle");
+
+          if (!newDevice) {
+            throw new Error("Device not found");
+          }
+
+          // Device belongs to another vehicle
+          if (
+            newDevice.vehicle &&
+            newDevice.vehicle.toString() !== vehicle._id.toString()
+          ) {
+            throw new Error("Device already in use");
+          }
         }
-      }
 
-      if (deviceId) {
-        const newDevice = await Device.findById(deviceId).select("vehicle");
-        if (!newDevice) throw new Error("Device not found");
-        if (newDevice.vehicle) throw new Error("Device already in use");
+        // Release old device
+        if (currentDeviceId) {
+          const oldDevice =
+            await Device.findById(currentDeviceId).select("vehicle");
 
-        vehicle.device = newDevice._id;
+          if (oldDevice) {
+            oldDevice.vehicle = null;
+            await oldDevice.save();
+          }
+        }
 
-        newDevice.vehicle = vehicle._id;
-        await newDevice.save();
-      } else {
-        vehicle.device = null;
+        // Assign new device
+        if (newDevice) {
+          vehicle.device = newDevice._id;
+          newDevice.vehicle = vehicle._id;
+          await newDevice.save();
+        } else {
+          vehicle.device = null;
+        }
       }
     }
 
+    // Update operator
     if (
       operatorId &&
       Object.prototype.toString.call(operatorId) !== "[object Object]"
@@ -400,15 +428,21 @@ exports.updateVehicle = async (req, res) => {
       vehicle.operator = operatorId;
     }
 
+    // Update remaining fields
     Object.assign(vehicle, updateData);
 
     await vehicle.save();
 
-    const data = { id: vehicle._id, ...vehicle.toObject() };
+    const data = {
+      id: vehicle._id,
+      ...vehicle.toObject(),
+    };
 
     return res.json(data);
   } catch (err) {
-    return res.status(400).json({ message: err.message });
+    return res.status(400).json({
+      message: err.message,
+    });
   }
 };
 

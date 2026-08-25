@@ -329,7 +329,7 @@ exports.fullVehicleDetails = async (req, res, next, tController) => {
 
     if (!vehicle) return res.status(404).json({ error: "Not found" });
 
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
 
     const alertHistoryFetch = await DeviceAlert.find(
       {
