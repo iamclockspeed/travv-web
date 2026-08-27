@@ -297,14 +297,18 @@ exports.totalVehiclesOverview = async (req, res, next, tController) => {
     const total = filteredFDVs.size;
 
     const data = vehicles
-      .map((ve) => ({
-        id: ve._id,
-        ...ve.toObject(),
-        device: {
-          ...ve.toObject().device,
-          structuredTrackingData: filteredFDVs.get(ve.device.imei)?.structured,
-        },
-      }))
+      .map((ve) => {
+        const obj = ve.toObject();
+        return {
+          id: ve._id,
+          ...obj,
+          device: {
+            ...obj.device,
+            structuredTrackingData: filteredFDVs.get(ve.device.imei)
+              ?.structured,
+          },
+        };
+      })
       .filter((ve) => ve.device.structuredTrackingData != null)
       .slice(range[0], range[1]);
 
@@ -345,11 +349,12 @@ exports.fullVehicleDetails = async (req, res, next, tController) => {
 
     const fastDataVehicle = tController.getDevice(vehicle.device.imei);
 
+    const obj = vehicle.toObject();
     const data = {
       id: vehicle._id,
-      ...vehicle.toObject(),
+      ...obj,
       device: {
-        ...vehicle.toObject().device,
+        ...obj.device,
         structuredTrackingData: fastDataVehicle?.structured,
         alertHistory,
       },

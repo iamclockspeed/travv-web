@@ -22,9 +22,7 @@ class TeltonikaController {
 
     // Startup DB hydration retry configuration.
     this.prefetchMaxRetries = options.prefetchMaxRetries ?? 10;
-
     this.prefetchRetryDelayMs = options.prefetchRetryDelayMs ?? 2_000;
-
     this.prefetchMaxRetryDelayMs = options.prefetchMaxRetryDelayMs ?? 30_000;
 
     this.fastData = new Map();
@@ -77,6 +75,45 @@ class TeltonikaController {
     console.log("[Teltonika] Controller started");
   }
 
+  async shutdown() {
+    if (this.isShuttingDown) {
+      return;
+    }
+
+    this.isShuttingDown = true;
+
+    console.log("[Teltonika] Shutting down...");
+
+    if (this.forcedRefresh) {
+      clearInterval(this.forcedRefresh);
+      this.forcedRefresh = null;
+    }
+
+    if (this.persistenceInterval) {
+      clearInterval(this.persistenceInterval);
+      this.persistenceInterval = null;
+    }
+
+    /*
+     * Final persistence.
+     *
+     * updateToPersistentStorage() will still work because
+     * it checks isDBConnected(), but it doesn't reject
+     * because of isShuttingDown.
+     */
+    await this.updateToPersistentStorage();
+
+    if (this.tracker && typeof this.tracker.stop === "function") {
+      try {
+        await this.tracker.stop();
+      } catch (error) {
+        console.error("[Teltonika] Tracker shutdown failed:", error);
+      }
+    }
+
+    console.log("[Teltonika] Shutdown complete");
+  }
+
   // ============================================================
   // STARTUP PREFETCH WITH RETRY
   // ============================================================
@@ -98,9 +135,7 @@ class TeltonikaController {
         );
 
         await this.sleep(delay);
-
-        delay = Math.min(delay * 2, this.prefetchMaxRetryDelayMs);
-
+        delay = this.nextBackoffDelay(delay);
         continue;
       }
 
@@ -134,18 +169,7 @@ class TeltonikaController {
         console.log(`[Teltonika] Retrying hydration in ` + `${delay}ms...`);
 
         await this.sleep(delay);
-
-        /*
-         * Exponential backoff:
-         *
-         * 2s
-         * 4s
-         * 8s
-         * 16s
-         * 30s
-         * 30s...
-         */
-        delay = Math.min(delay * 2, this.prefetchMaxRetryDelayMs);
+        delay = this.nextBackoffDelay(delay);
       }
     }
 
@@ -163,6 +187,15 @@ class TeltonikaController {
       `[Teltonika] Unable to hydrate persistent state ` +
         `after ${this.prefetchMaxRetries} attempts`,
     );
+  }
+
+  /*
+   * Exponential backoff, capped at prefetchMaxRetryDelayMs.
+   *
+   * e.g. 2s, 4s, 8s, 16s, 30s, 30s...
+   */
+  nextBackoffDelay(delay) {
+    return Math.min(delay * 2, this.prefetchMaxRetryDelayMs);
   }
 
   async hydrateFromPersistentStorage() {
@@ -187,7 +220,6 @@ class TeltonikaController {
        * This is different from a DB failure.
        */
       console.log("[Teltonika] DB contains no devices");
-
       return;
     }
 
@@ -229,14 +261,11 @@ class TeltonikaController {
       structured.general ||= {};
       structured.alerts ||= {};
       structured.locs ||= {};
-
       structured.alerts.list ||= [];
 
       const device = {
         ts: Date.now(),
-
         structured,
-
         unstructured,
       };
 
@@ -268,7 +297,7 @@ class TeltonikaController {
   }
 
   async hydrateFromPersistentStorageOnDemand() {
-    // Load all routes
+    // Load all routes.
     const routes = await VehicleRoute.find({}).lean();
 
     const hydratedRoutes = new Map();
@@ -276,15 +305,13 @@ class TeltonikaController {
     for (const route of routes) {
       if (!route?._id) continue;
 
-      const routeId = String(route._id);
-
       /**
        * routeId -> route.pathData
        */
-      hydratedRoutes.set(routeId, route.pathData);
+      hydratedRoutes.set(String(route._id), route.pathData);
     }
 
-    // Load vehicles with their devices
+    // Load vehicles with their devices.
     const vehicles = await Vehicle.find({})
       .select("device routes")
       .populate("device", "imei")
@@ -297,15 +324,9 @@ class TeltonikaController {
 
       if (!imei) continue;
 
-      const vehicleRoutes = [];
-
-      for (const routeId of vehicle.routes || []) {
-        const pathData = hydratedRoutes.get(String(routeId));
-
-        if (pathData) {
-          vehicleRoutes.push(pathData);
-        }
-      }
+      const vehicleRoutes = (vehicle.routes || [])
+        .map((routeId) => hydratedRoutes.get(String(routeId)))
+        .filter(Boolean);
 
       /**
        * imei -> [route.pathData, ...]
@@ -334,9 +355,7 @@ class TeltonikaController {
     const rows = await DeviceMessage.aggregate([
       {
         $match: {
-          "meta.imei": {
-            $in: imeis,
-          },
+          "meta.imei": { $in: imeis },
         },
       },
 
@@ -356,10 +375,7 @@ class TeltonikaController {
       {
         $group: {
           _id: "$meta.imei",
-
-          messages: {
-            $push: "$body",
-          },
+          messages: { $push: "$body" },
         },
       },
 
@@ -368,9 +384,7 @@ class TeltonikaController {
        */
       {
         $project: {
-          messages: {
-            $slice: ["$messages", this.unstructuredMaxMsg],
-          },
+          messages: { $slice: ["$messages", this.unstructuredMaxMsg] },
         },
       },
     ]);
@@ -379,13 +393,8 @@ class TeltonikaController {
 
     for (const row of rows) {
       /*
-       * Mongo:
-       *
-       * newest -> oldest
-       *
-       * Controller:
-       *
-       * oldest -> newest
+       * Mongo:   newest -> oldest
+       * Controller: oldest -> newest
        */
       result.set(row._id, (row.messages || []).reverse());
     }
@@ -394,13 +403,11 @@ class TeltonikaController {
   }
 
   sleep(ms) {
-    return new Promise((resolve) => {
-      setTimeout(resolve, ms);
-    });
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // ============================================================
-  // REFRESH / PERSISTENCE
+  // REFRESH / PERSISTENCE LOOPS
   // ============================================================
 
   startForcedRefresh() {
@@ -422,9 +429,7 @@ class TeltonikaController {
          * Status and location are recalculated because
          * they can become stale without a new packet.
          */
-        this.updateDeviceStructured(imei, {
-          updateAlerts: false,
-        });
+        this.updateDeviceStructured(imei, { updateAlerts: false });
       });
     }, this.statusRefreshIntervalMs);
   }
@@ -456,33 +461,15 @@ class TeltonikaController {
       }
 
       const deviceIMEI = meta?.deviceIMEI;
-
       const ts = payload?.state?.reported?.ts;
 
       if (!deviceIMEI) {
         console.warn("[Teltonika] Received packet without IMEI");
-
         return;
       }
 
       if (this.isAcceptablePacket(ts)) {
-        // console.log(
-        //   `[Teltonika] ACCEPTED payload | ` +
-        //     `IMEI=${deviceIMEI} | ` +
-        //     `ts=${ts} | ` +
-        //     `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
-        //   JSON.stringify(payload),
-        // );
-
         this.updateDevice(deviceIMEI, payload);
-      } else {
-        // console.log(
-        //   `[Teltonika] Rejected payload | ` +
-        //     `IMEI=${deviceIMEI} | ` +
-        //     `ts=${ts} | ` +
-        //     `age=${Math.round(Math.abs(Date.now() - ts) / 1000)}s`,
-        //   JSON.stringify(payload),
-        // );
       }
     });
 
@@ -517,17 +504,11 @@ class TeltonikaController {
       imeis.has(key),
     );
 
-    if (returnArray) {
-      return filtered;
-    }
-
-    return new Map(filtered);
+    return returnArray ? filtered : new Map(filtered);
   }
 
   getRoutesForDevice(imei) {
-    const routesByImei = this.fastData.get("routesByImei");
-
-    return routesByImei?.get(imei) || [];
+    return this.fastData.get("routesByImei")?.get(imei) || [];
   }
 
   // ============================================================
@@ -540,13 +521,7 @@ class TeltonikaController {
     if (!device) {
       const newDevice = {
         ts: Date.now(),
-
-        structured: {
-          general: {},
-          alerts: {},
-          locs: {},
-        },
-
+        structured: { general: {}, alerts: {}, locs: {} },
         unstructured: [data],
       };
 
@@ -557,10 +532,7 @@ class TeltonikaController {
        *
        * Process alerts.
        */
-      this.updateDeviceStructured(imei, {
-        updateAlerts: true,
-      });
-
+      this.updateDeviceStructured(imei, { updateAlerts: true });
       return;
     }
 
@@ -576,23 +548,13 @@ class TeltonikaController {
     /*
      * New packet.
      */
-    this.updateDeviceStructured(imei, {
-      updateAlerts: true,
-    });
+    this.updateDeviceStructured(imei, { updateAlerts: true });
   }
-
-  // ============================================================
-  // STRUCTURED DATA
-  // ============================================================
 
   updateDeviceStructured(imei, { updateAlerts = false } = {}) {
     const device = this.getDevice(imei);
 
-    if (!device) {
-      return;
-    }
-
-    if (!device.unstructured?.length) {
+    if (!device || !device.unstructured?.length) {
       return;
     }
 
@@ -616,7 +578,6 @@ class TeltonikaController {
 
   deviceStatusUpdate(device) {
     const latest = device.unstructured[device.unstructured.length - 1];
-
     const reported = latest?.state?.reported;
 
     if (!reported) {
@@ -684,7 +645,6 @@ class TeltonikaController {
 
   deviceLocsUpdate(device) {
     const latest = device.unstructured[device.unstructured.length - 1];
-
     const reported = latest?.state?.reported;
 
     if (!reported) {
@@ -694,17 +654,13 @@ class TeltonikaController {
     const locs = device.structured.locs;
 
     const timestamp = Number(reported.ts);
-
     locs.ts = Number.isFinite(timestamp) ? timestamp : Date.now();
 
     const [lat, lng] = reported.latlng?.split(",").map(Number) || [0, 0];
-
     locs.lat = Number.isFinite(lat) ? lat : 0;
-
     locs.lng = Number.isFinite(lng) ? lng : 0;
 
     const alt = Number(reported.alt);
-
     locs.alt = Number.isFinite(alt) ? alt : 0;
   }
 
@@ -714,7 +670,6 @@ class TeltonikaController {
 
   deviceAlertsUpdate(device, imei) {
     const latest = device.unstructured[device.unstructured.length - 1];
-
     const reported = latest?.state?.reported;
 
     if (!reported) {
@@ -726,9 +681,7 @@ class TeltonikaController {
     }
 
     const alerts = device.structured.alerts;
-
     alerts.ts = Number(reported.ts) || Date.now();
-
     alerts.list ||= [];
 
     const alertsMap = new Map(
@@ -736,39 +689,40 @@ class TeltonikaController {
     );
 
     const [lat, lng] = reported.latlng?.split(",").map(Number) || [0, 0];
-
     const alt = Number(reported.alt);
 
     const common = {
       ts: alerts.ts,
-
       locs: {
         lat: Number.isFinite(lat) ? lat : 0,
-
         lng: Number.isFinite(lng) ? lng : 0,
-
         alt: Number.isFinite(alt) ? alt : 0,
       },
     };
 
     /*
+     * Simple ON/OFF alerts: IO value 1 sets the alert,
+     * IO value 0 clears it, anything else leaves it as-is.
+     */
+    const toggleAlert = (ioCode, key, type) => {
+      const value = Number(reported[ioCode]);
+
+      if (value === 1) {
+        alertsMap.set(key, { ...common, type, message: key });
+      } else if (value === 0) {
+        alertsMap.delete(key);
+      }
+    };
+
+    /*
      * Overspeed.
      */
-    if (Number(reported["255"]) === 1) {
-      alertsMap.set("over speeding", {
-        ...common,
+    toggleAlert("255", "over speeding", "safety");
 
-        type: "safety",
-        message: "over speeding",
-      });
-    } else if (Number(reported["255"]) === 0) {
-      alertsMap.delete("over speeding");
-    }
-
-    const routeViolation = this.checkRouteViolation(imei, {
-      lat,
-      lng,
-    });
+    /*
+     * Geofence violation.
+     */
+    const routeViolation = this.checkRouteViolation(imei, { lat, lng });
 
     if (routeViolation) {
       if (!alertsMap.has("geofence violation")) {
@@ -783,42 +737,32 @@ class TeltonikaController {
     }
 
     /*
-     * Crash.
-     *
+     * Crash. Stays active until a full day has passed
+     * without a new crash reading.
      */
     if (Number(reported["247"]) > 0) {
       alertsMap.set("crash detected", {
         ...common,
-
         type: "safety",
         message: "crash detected",
       });
     } else {
       const lastAlertTS = alertsMap.get("crash detected")?.ts;
-      if (lastAlertTS) {
-        const ONE_DAY = 24 * 60 * 60 * 1000;
-        if (Date.now() - lastAlertTS >= ONE_DAY) {
-          alertsMap.delete("crash detected");
-        }
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+
+      if (lastAlertTS && Date.now() - lastAlertTS >= ONE_DAY) {
+        alertsMap.delete("crash detected");
       }
     }
 
     /*
-     * Excessive Idle
+     * Excessive idle.
      */
-    if (Number(reported["251"]) === 1) {
-      alertsMap.set("excessive idle", {
-        ...common,
-
-        type: "behaviour",
-        message: "excessive idle",
-      });
-    } else if (Number(reported["251"]) === 0) {
-      alertsMap.delete("excessive idle");
-    }
+    toggleAlert("251", "excessive idle", "behaviour");
 
     /*
-     * Low Batter (Currently GPS Battery).
+     * Low battery (currently GPS battery), with hysteresis
+     * to avoid flapping: set at <=15%, clear at >=50%.
      */
     const battery = Number(reported["113"]);
 
@@ -837,42 +781,24 @@ class TeltonikaController {
     /*
      * Unplug detection.
      */
-    if (Number(reported["252"]) === 1) {
-      alertsMap.set("unplugged", {
-        ...common,
-
-        type: "maintenance",
-        message: "unplugged",
-      });
-    } else if (Number(reported["252"]) === 0) {
-      alertsMap.delete("unplugged");
-    }
+    toggleAlert("252", "unplugged", "maintenance");
 
     /*
      * Towing detection.
      */
-    if (Number(reported["246"]) === 1) {
-      alertsMap.set("towing", {
-        ...common,
-
-        type: "maintenance",
-        message: "towing",
-      });
-    } else if (Number(reported["246"]) === 0) {
-      alertsMap.delete("towing");
-    }
+    toggleAlert("246", "towing", "maintenance");
 
     alerts.list = [...alertsMap.values()];
   }
 
   // ============================================================
-  // GEO FENCE VIOLATION DETECTION HELPERS
+  // GEOFENCE VIOLATION DETECTION
   // ============================================================
 
   checkRouteViolation(imei, point) {
     const routes = this.getRoutesForDevice(imei);
 
-    // No routes assigned = no route violation
+    // No routes assigned = no route violation.
     if (!routes.length) {
       return false;
     }
@@ -880,6 +806,7 @@ class TeltonikaController {
     const insideAnyRoute = routes.some((route) => {
       const halfWidthMeters =
         route?.routeWidthMeters || this.routeWidthMeters / 2;
+
       return this.isPointInsideRoute(point, route.path, halfWidthMeters);
     });
 
@@ -891,12 +818,7 @@ class TeltonikaController {
    * the corridor around the route centerline.
    *
    * route = [
-   *   {
-   *     coordinates: {
-   *       longitude,
-   *       latitude
-   *     }
-   *   },
+   *   { coordinates: { longitude, latitude } },
    *   ...
    * ]
    */
@@ -909,8 +831,6 @@ class TeltonikaController {
     ) {
       return false;
     }
-
-    let nearestDistance = Infinity;
 
     for (let i = 0; i < route.length - 1; i++) {
       const a = route[i]?.coordinates;
@@ -929,12 +849,8 @@ class TeltonikaController {
         Number(b.longitude),
       );
 
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-      }
-
-      // We already know the vehicle is inside.
-      if (nearestDistance <= thresholdMeters) {
+      // Found a segment close enough — no need to check the rest.
+      if (distance <= thresholdMeters) {
         return true;
       }
     }
@@ -956,10 +872,9 @@ class TeltonikaController {
     endLat,
     endLng,
   ) {
-    const R = 6371000; // Earth radius in meters
+    const R = 6371000; // Earth radius in meters.
 
     const lat0 = this.toRadians((pointLat + startLat + endLat) / 3);
-
     const cosLat = Math.cos(lat0);
 
     // Convert coordinates to local meters.
@@ -985,11 +900,8 @@ class TeltonikaController {
       return Math.hypot(apx, apy);
     }
 
-    // Projection of P onto AB.
-    let t = (apx * abx + apy * aby) / abSquared;
-
-    // Clamp projection to the segment.
-    t = Math.max(0, Math.min(1, t));
+    // Projection of P onto AB, clamped to the segment.
+    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abSquared));
 
     const closestX = ax + t * abx;
     const closestY = ay + t * aby;
@@ -1036,16 +948,12 @@ class TeltonikaController {
       return true;
     }
 
-    // ------------------------------------------------------------
-    // 1. Incoming packet is older → reject.
-    // ------------------------------------------------------------
+    // Incoming packet is older → reject.
     if (incomingTs < latestTs) {
       return false;
     }
 
-    // ------------------------------------------------------------
-    // 2. Same timestamp → higher Teltonika priority wins.
-    // ------------------------------------------------------------
+    // Same timestamp → higher Teltonika priority wins.
     if (incomingTs === latestTs) {
       if (incomingPr > latestPr) {
         list[latestIndex] = data;
@@ -1056,9 +964,7 @@ class TeltonikaController {
       return false;
     }
 
-    // ------------------------------------------------------------
-    // 3. Incoming packet is newer → accept.
-    // ------------------------------------------------------------
+    // Incoming packet is newer → accept.
     if (list.length >= this.unstructuredMaxMsg) {
       list.shift();
     }
@@ -1085,7 +991,6 @@ class TeltonikaController {
      */
     if (this.isPersisting) {
       console.warn("[Teltonika] Persistence already running");
-
       return;
     }
 
@@ -1098,118 +1003,24 @@ class TeltonikaController {
         return;
       }
 
-      const deviceUpdates = [];
-      const deviceMessageOps = [];
-      const deviceAlertOps = [];
-
-      for (const [imei, data] of devices) {
-        /*
-         * Structured snapshot.
-         */
-        deviceUpdates.push({
-          updateOne: {
-            filter: {
-              imei,
-            },
-
-            update: {
-              $set: {
-                structuredTrackingData: data.structured,
-              },
-            },
-          },
-        });
-
-        /*
-         * Latest messages.
-         */
-        for (const item of data.unstructured || []) {
-          const ts = Number(item?.state?.reported?.ts);
-
-          if (!Number.isFinite(ts)) {
-            continue;
-          }
-
-          deviceMessageOps.push({
-            updateOne: {
-              filter: {
-                "meta.imei": imei,
-                "meta.ts": ts,
-              },
-
-              update: {
-                $setOnInsert: {
-                  meta: {
-                    imei,
-                    ts,
-                  },
-
-                  body: item,
-                },
-              },
-
-              upsert: true,
-            },
-          });
-        }
-
-        /*
-         * Save alerts.
-         */
-        for (const item of data.structured.alerts.list || []) {
-          const ts = Number(item?.ts);
-
-          if (!Number.isFinite(ts)) {
-            continue;
-          }
-
-          deviceAlertOps.push({
-            updateOne: {
-              filter: {
-                "meta.imei": imei,
-                "meta.ts": ts,
-              },
-
-              update: {
-                $setOnInsert: {
-                  meta: {
-                    imei,
-                    ts,
-                  },
-
-                  body: item,
-                },
-              },
-
-              upsert: true,
-            },
-          });
-        }
-      }
+      const { deviceUpdates, deviceMessageOps, deviceAlertOps } =
+        this.buildPersistenceOps(devices);
 
       const operations = [];
 
       if (deviceUpdates.length) {
-        operations.push(
-          Device.bulkWrite(deviceUpdates, {
-            ordered: false,
-          }),
-        );
+        operations.push(Device.bulkWrite(deviceUpdates, { ordered: false }));
       }
 
       if (deviceMessageOps.length) {
         operations.push(
-          DeviceMessage.bulkWrite(deviceMessageOps, {
-            ordered: false,
-          }),
+          DeviceMessage.bulkWrite(deviceMessageOps, { ordered: false }),
         );
       }
 
       if (deviceAlertOps.length) {
         operations.push(
-          DeviceAlert.bulkWrite(deviceAlertOps, {
-            ordered: false,
-          }),
+          DeviceAlert.bulkWrite(deviceAlertOps, { ordered: false }),
         );
       }
 
@@ -1228,6 +1039,60 @@ class TeltonikaController {
     }
   }
 
+  /*
+   * Builds the bulk write op lists for devices, messages,
+   * and alerts from the current in-memory device map.
+   */
+  buildPersistenceOps(devices) {
+    const deviceUpdates = [];
+    const deviceMessageOps = [];
+    const deviceAlertOps = [];
+
+    const upsertByImeiTs = (imei, ts, body) => ({
+      updateOne: {
+        filter: { "meta.imei": imei, "meta.ts": ts },
+        update: { $setOnInsert: { meta: { imei, ts }, body } },
+        upsert: true,
+      },
+    });
+
+    for (const [imei, data] of devices) {
+      /*
+       * Structured snapshot.
+       */
+      deviceUpdates.push({
+        updateOne: {
+          filter: { imei },
+          update: { $set: { structuredTrackingData: data.structured } },
+        },
+      });
+
+      /*
+       * Latest messages.
+       */
+      for (const item of data.unstructured || []) {
+        const ts = Number(item?.state?.reported?.ts);
+
+        if (Number.isFinite(ts)) {
+          deviceMessageOps.push(upsertByImeiTs(imei, ts, item));
+        }
+      }
+
+      /*
+       * Alerts.
+       */
+      for (const item of data.structured.alerts.list || []) {
+        const ts = Number(item?.ts);
+
+        if (Number.isFinite(ts)) {
+          deviceAlertOps.push(upsertByImeiTs(imei, ts, item));
+        }
+      }
+    }
+
+    return { deviceUpdates, deviceMessageOps, deviceAlertOps };
+  }
+
   // ============================================================
   // PACKET FILTER
   // ============================================================
@@ -1242,51 +1107,6 @@ class TeltonikaController {
     const diffSeconds = Math.abs(Date.now() - timestamp) / 1000;
 
     return diffSeconds <= windowSeconds;
-  }
-
-  // ============================================================
-  // SHUTDOWN
-  // ============================================================
-
-  async shutdown() {
-    if (this.isShuttingDown) {
-      return;
-    }
-
-    this.isShuttingDown = true;
-
-    console.log("[Teltonika] Shutting down...");
-
-    if (this.forcedRefresh) {
-      clearInterval(this.forcedRefresh);
-
-      this.forcedRefresh = null;
-    }
-
-    if (this.persistenceInterval) {
-      clearInterval(this.persistenceInterval);
-
-      this.persistenceInterval = null;
-    }
-
-    /*
-     * Final persistence.
-     *
-     * updateToPersistentStorage() will still work because
-     * it checks isDBConnected(), but it doesn't reject
-     * because of isShuttingDown.
-     */
-    await this.updateToPersistentStorage();
-
-    if (this.tracker && typeof this.tracker.stop === "function") {
-      try {
-        await this.tracker.stop();
-      } catch (error) {
-        console.error("[Teltonika] Tracker shutdown failed:", error);
-      }
-    }
-
-    console.log("[Teltonika] Shutdown complete");
   }
 }
 
