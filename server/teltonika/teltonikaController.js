@@ -4,15 +4,38 @@ const DeviceAlert = require("../models/devicealert");
 const VehicleRoute = require("../models/vehicleroute");
 const Vehicle = require("../models/vehicles");
 
+/*
+ * Teltonika IO element codes used throughout status/alert logic.
+ * Centralised so the meaning of each code is documented in one
+ * place instead of scattered through magic strings.
+ */
+const IO = {
+  IGNITION: "239",
+  MOVEMENT: "240",
+  OVERSPEED: "255",
+  CRASH: "247",
+  EXCESSIVE_IDLE: "251",
+  GPS_BATTERY: "113",
+  UNPLUGGED: "252",
+  TOWING: "246",
+};
+
+// Synthetic "IO code" for the geofence alert (not a real Teltonika IO element).
+const GEOFENCE_EVT = 155;
+
 class TeltonikaController {
   constructor(options = {}) {
     // DB connection status closure.
-    // Always call this as this.isDBConnected().
     this.isDBConnected = options.isDBConnected;
 
-    this.routeWidthMeters = options.routeWidthMeters ?? 30;
+    this.defaultRouteWidthInMeters = options.defaultRouteWidthInMeters ?? 30;
 
-    this.unstructuredMaxMsg = 10;
+    /*
+     * Max unstructured packets kept per device, both in memory
+     * and when hydrating from the DB. Enforced everywhere the
+     * unstructured list is mutated (see trimUnstructured()).
+     */
+    this.unstructuredMaxMsg = 100;
 
     // Recalculate time-dependent device state.
     this.statusRefreshIntervalMs = 5_000;
@@ -226,7 +249,7 @@ class TeltonikaController {
     const imeis = devices.map((device) => device.imei).filter(Boolean);
 
     /*
-     * Load latest 10 messages per IMEI.
+     * Load latest N messages per IMEI (already sorted oldest -> newest).
      */
     const messagesByImei = await this.loadLatestMessages(imeis);
 
@@ -264,9 +287,16 @@ class TeltonikaController {
       structured.alerts.list ||= [];
 
       const device = {
-        ts: Date.now(),
         structured,
         unstructured,
+        /*
+         * Watermark: newest packet ts that's already durably
+         * stored, so the persistence loop doesn't keep
+         * re-sending messages we restored from the DB.
+         */
+        lastPersistedMsgTs: unstructured.length
+          ? unstructured[unstructured.length - 1].state.reported.ts
+          : 0,
       };
 
       /*
@@ -296,6 +326,13 @@ class TeltonikaController {
     console.log(`[Teltonika] Hydrated ` + `${hydratedDevices.size} devices`);
   }
 
+  /*
+   * Hydrates route geometries and the imei -> routes lookup used
+   * for geofence checks. Runs as part of startup hydration, and
+   * is also called directly (on demand) by API routes when
+   * routes/vehicles change and need to be reflected in fastData
+   * without a full restart.
+   */
   async hydrateFromPersistentStorageOnDemand() {
     // Load all routes.
     const routes = await VehicleRoute.find({}).lean();
@@ -461,16 +498,27 @@ class TeltonikaController {
       }
 
       const deviceIMEI = meta?.deviceIMEI;
-      const ts = payload?.state?.reported?.ts;
 
       if (!deviceIMEI) {
         console.warn("[Teltonika] Received packet without IMEI");
         return;
       }
 
-      if (this.isAcceptablePacket(ts)) {
-        this.updateDevice(deviceIMEI, payload);
+      const incomingTs = Number(payload?.state?.reported?.ts);
+
+      if (!Number.isFinite(incomingTs)) {
+        console.warn("[Teltonika] Received packet without a valid timestamp");
+        return;
       }
+
+      const evt = Number(payload?.state?.reported?.evt);
+
+      if (!Number.isFinite(evt)) {
+        console.warn("[Teltonika] Received packet without a valid event");
+        return;
+      }
+
+      this.updateDevice(deviceIMEI, payload);
     });
 
     tracker.on("disconnection", async ({ meta }) => {
@@ -500,15 +548,61 @@ class TeltonikaController {
   }
 
   filterDevices(imeis, returnArray = false) {
-    const filtered = [...this.fastData.get("devices")].filter(([key]) =>
-      imeis.has(key),
-    );
+    const devices = this.fastData.get("devices");
+    const filtered = [];
+
+    for (const [key, value] of devices) {
+      if (imeis.has(key)) {
+        filtered.push([key, value]);
+      }
+    }
 
     return returnArray ? filtered : new Map(filtered);
   }
 
   getRoutesForDevice(imei) {
     return this.fastData.get("routesByImei")?.get(imei) || [];
+  }
+
+  /*
+   * Packets can arrive out of order (retries, buffered/offline
+   * devices flushing a backlog, etc.), so push order does NOT
+   * imply chronological order. Scan for the max ts rather than
+   * assuming the last-pushed element is the latest. Bounded by
+   * unstructuredMaxMsg (trimUnstructured), so this stays cheap.
+   */
+  getLatestUnstructured(device) {
+    const list = device.unstructured;
+    let latest = list[0];
+
+    for (let i = 1; i < list.length; i++) {
+      if (list[i].state.reported.ts > latest.state.reported.ts) {
+        latest = list[i];
+      }
+    }
+
+    return latest;
+  }
+
+  /*
+   * Keeps device.unstructured bounded to unstructuredMaxMsg.
+   * Since packets aren't necessarily pushed in chronological
+   * order, we can't just drop from the front — that could evict
+   * a genuinely recent packet that happened to arrive early and
+   * keep a stale one that arrived late. Sort by ts and drop the
+   * oldest instead. Without this, live devices accumulate
+   * packets forever.
+   */
+  trimUnstructured(device) {
+    const list = device.unstructured;
+    const excess = list.length - this.unstructuredMaxMsg;
+
+    if (excess <= 0) {
+      return;
+    }
+
+    list.sort((a, b) => a.state.reported.ts - b.state.reported.ts);
+    list.splice(0, excess);
   }
 
   // ============================================================
@@ -520,34 +614,20 @@ class TeltonikaController {
 
     if (!device) {
       const newDevice = {
-        ts: Date.now(),
         structured: { general: {}, alerts: {}, locs: {} },
         unstructured: [data],
+        lastPersistedMsgTs: 0,
       };
 
       this.setDevice(imei, newDevice);
 
-      /*
-       * New packet.
-       *
-       * Process alerts.
-       */
       this.updateDeviceStructured(imei, { updateAlerts: true });
       return;
     }
 
-    const added = this.updateDeviceUnstructured(device, data);
+    device.unstructured.push(data);
+    this.trimUnstructured(device);
 
-    /*
-     * Old/duplicate packet.
-     */
-    if (!added) {
-      return;
-    }
-
-    /*
-     * New packet.
-     */
     this.updateDeviceStructured(imei, { updateAlerts: true });
   }
 
@@ -577,49 +657,41 @@ class TeltonikaController {
   // ============================================================
 
   deviceStatusUpdate(device) {
-    const latest = device.unstructured[device.unstructured.length - 1];
-    const reported = latest?.state?.reported;
-
-    if (!reported) {
-      return;
-    }
+    const latest = this.getLatestUnstructured(device);
+    const reported = latest.state.reported;
 
     const general = device.structured.general;
 
-    general.status ||= "offline";
-    general.ignition ||= "off";
-    general.moving ||= "stopped";
-
-    const packetTs = Number(reported.ts);
-
-    if (!Number.isFinite(packetTs)) {
-      general.status = "offline";
-      return;
-    }
+    const packetTs = reported.ts;
 
     general.ts = packetTs;
 
     /*
      * IO 239 = ignition.
      */
-    general.ignition = Number(reported["239"]) === 1 ? "on" : "off";
+    general.ignition = Number(reported[IO.IGNITION]) === 1 ? "on" : "off";
 
     /*
      * IO 240 = movement.
      */
-    general.moving = Number(reported["240"]) === 1 ? "moving" : "stopped";
+    general.moving = Number(reported[IO.MOVEMENT]) === 1 ? "moving" : "stopped";
 
     const diffInSeconds = Math.max(0, (Date.now() - packetTs) / 1000);
 
     /*
-     * Ignition ON or moving.
+     * Ignition ON and moving.
      */
-    if (general.ignition === "on" || general.moving === "moving") {
+    if (general.ignition === "on" && general.moving === "moving") {
       if (diffInSeconds <= 5) {
         general.status = "active";
         return;
       }
+    }
 
+    /*
+     * Ignition ON and not moving.
+     */
+    if (general.ignition === "on" && general.moving === "stopped") {
       if (diffInSeconds <= 20) {
         general.status = "idle";
         return;
@@ -644,17 +716,12 @@ class TeltonikaController {
   // ============================================================
 
   deviceLocsUpdate(device) {
-    const latest = device.unstructured[device.unstructured.length - 1];
-    const reported = latest?.state?.reported;
-
-    if (!reported) {
-      return;
-    }
+    const latest = this.getLatestUnstructured(device);
+    const reported = latest.state.reported;
 
     const locs = device.structured.locs;
 
-    const timestamp = Number(reported.ts);
-    locs.ts = Number.isFinite(timestamp) ? timestamp : Date.now();
+    locs.ts = reported.ts;
 
     const [lat, lng] = reported.latlng?.split(",").map(Number) || [0, 0];
     locs.lat = Number.isFinite(lat) ? lat : 0;
@@ -668,20 +735,28 @@ class TeltonikaController {
   // ALERTS
   // ============================================================
 
+  /*
+   * Simple ON/OFF alert: IO value 1 sets the alert, IO value 0
+   * clears it, anything else leaves it as-is. Extracted as a
+   * method (rather than a closure rebuilt on every call) since
+   * deviceAlertsUpdate runs on every incoming packet.
+   */
+  toggleAlert(alertsMap, common, ioCode, key, type, reported) {
+    const value = Number(reported[ioCode]);
+
+    if (value === 1) {
+      alertsMap.set(key, { ...common, evt: ioCode, type, message: key });
+    } else if (value === 0) {
+      alertsMap.delete(key);
+    }
+  }
+
   deviceAlertsUpdate(device, imei) {
-    const latest = device.unstructured[device.unstructured.length - 1];
-    const reported = latest?.state?.reported;
-
-    if (!reported) {
-      return;
-    }
-
-    if (reported.evt !== 0) {
-      console.log(reported.evt, ": " + reported[[reported.evt]]);
-    }
+    const latest = this.getLatestUnstructured(device);
+    const reported = latest.state.reported;
 
     const alerts = device.structured.alerts;
-    alerts.ts = Number(reported.ts) || Date.now();
+    alerts.ts = reported.ts;
     alerts.list ||= [];
 
     const alertsMap = new Map(
@@ -701,23 +776,16 @@ class TeltonikaController {
     };
 
     /*
-     * Simple ON/OFF alerts: IO value 1 sets the alert,
-     * IO value 0 clears it, anything else leaves it as-is.
-     */
-    const toggleAlert = (ioCode, key, type) => {
-      const value = Number(reported[ioCode]);
-
-      if (value === 1) {
-        alertsMap.set(key, { ...common, type, message: key });
-      } else if (value === 0) {
-        alertsMap.delete(key);
-      }
-    };
-
-    /*
      * Overspeed.
      */
-    toggleAlert("255", "over speeding", "safety");
+    this.toggleAlert(
+      alertsMap,
+      common,
+      IO.OVERSPEED,
+      "over speeding",
+      "safety",
+      reported,
+    );
 
     /*
      * Geofence violation.
@@ -728,6 +796,7 @@ class TeltonikaController {
       if (!alertsMap.has("geofence violation")) {
         alertsMap.set("geofence violation", {
           ...common,
+          evt: GEOFENCE_EVT,
           type: "safety",
           message: "geofence violation",
         });
@@ -740,9 +809,10 @@ class TeltonikaController {
      * Crash. Stays active until a full day has passed
      * without a new crash reading.
      */
-    if (Number(reported["247"]) > 0) {
+    if (Number(reported[IO.CRASH]) > 0) {
       alertsMap.set("crash detected", {
         ...common,
+        evt: IO.CRASH,
         type: "safety",
         message: "crash detected",
       });
@@ -758,18 +828,26 @@ class TeltonikaController {
     /*
      * Excessive idle.
      */
-    toggleAlert("251", "excessive idle", "behaviour");
+    this.toggleAlert(
+      alertsMap,
+      common,
+      IO.EXCESSIVE_IDLE,
+      "excessive idle",
+      "behaviour",
+      reported,
+    );
 
     /*
      * Low battery (currently GPS battery), with hysteresis
      * to avoid flapping: set at <=15%, clear at >=50%.
      */
-    const battery = Number(reported["113"]);
+    const battery = Number(reported[IO.GPS_BATTERY]);
 
     if (battery <= 15) {
       if (!alertsMap.has("low battery")) {
         alertsMap.set("low battery", {
           ...common,
+          evt: IO.GPS_BATTERY,
           type: "health",
           message: "low battery",
         });
@@ -781,12 +859,26 @@ class TeltonikaController {
     /*
      * Unplug detection.
      */
-    toggleAlert("252", "unplugged", "maintenance");
+    this.toggleAlert(
+      alertsMap,
+      common,
+      IO.UNPLUGGED,
+      "unplugged",
+      "maintenance",
+      reported,
+    );
 
     /*
      * Towing detection.
      */
-    toggleAlert("246", "towing", "maintenance");
+    this.toggleAlert(
+      alertsMap,
+      common,
+      IO.TOWING,
+      "towing",
+      "maintenance",
+      reported,
+    );
 
     alerts.list = [...alertsMap.values()];
   }
@@ -805,7 +897,7 @@ class TeltonikaController {
 
     const insideAnyRoute = routes.some((route) => {
       const halfWidthMeters =
-        route?.routeWidthMeters || this.routeWidthMeters / 2;
+        (route?.routeWidthMeters || this.defaultRouteWidthInMeters) / 2;
 
       return this.isPointInsideRoute(point, route.path, halfWidthMeters);
     });
@@ -914,67 +1006,6 @@ class TeltonikaController {
   }
 
   // ============================================================
-  // UNSTRUCTURED DATA
-  // ============================================================
-
-  updateDeviceUnstructured(device, data) {
-    const incomingTs = Number(data?.state?.reported?.ts);
-    const incomingPr = Number(data?.state?.reported?.pr ?? 0);
-
-    // Invalid timestamp → reject packet.
-    if (!Number.isFinite(incomingTs)) {
-      return false;
-    }
-
-    const list = device.unstructured;
-
-    // No previous packets → accept.
-    if (!list.length) {
-      list.push(data);
-      return true;
-    }
-
-    // Because the array is always time ordered,
-    // the last item is the newest packet.
-    const latestIndex = list.length - 1;
-    const latest = list[latestIndex];
-
-    const latestTs = Number(latest?.state?.reported?.ts);
-    const latestPr = Number(latest?.state?.reported?.pr ?? 0);
-
-    // If the existing timestamp is invalid, replace it.
-    if (!Number.isFinite(latestTs)) {
-      list[latestIndex] = data;
-      return true;
-    }
-
-    // Incoming packet is older → reject.
-    if (incomingTs < latestTs) {
-      return false;
-    }
-
-    // Same timestamp → higher Teltonika priority wins.
-    if (incomingTs === latestTs) {
-      if (incomingPr > latestPr) {
-        list[latestIndex] = data;
-        return true;
-      }
-
-      // Same or lower priority → reject.
-      return false;
-    }
-
-    // Incoming packet is newer → accept.
-    if (list.length >= this.unstructuredMaxMsg) {
-      list.shift();
-    }
-
-    list.push(data);
-
-    return true;
-  }
-
-  // ============================================================
   // DATABASE PERSISTENCE
   // ============================================================
 
@@ -1003,7 +1034,7 @@ class TeltonikaController {
         return;
       }
 
-      const { deviceUpdates, deviceMessageOps, deviceAlertOps } =
+      const { deviceUpdates, deviceMessageOps, deviceAlertOps, watermarks } =
         this.buildPersistenceOps(devices);
 
       const operations = [];
@@ -1026,6 +1057,18 @@ class TeltonikaController {
 
       await Promise.all(operations);
 
+      /*
+       * Only advance the "already persisted" watermark after the
+       * writes actually succeeded, so a failed cycle retries the
+       * same messages next time instead of silently losing them.
+       */
+      for (const [imei, ts] of watermarks) {
+        const device = devices.get(imei);
+        if (device) {
+          device.lastPersistedMsgTs = ts;
+        }
+      }
+
       console.log(
         `[Teltonika] DB sync complete | ` +
           `devices=${deviceUpdates.length} | ` +
@@ -1042,16 +1085,23 @@ class TeltonikaController {
   /*
    * Builds the bulk write op lists for devices, messages,
    * and alerts from the current in-memory device map.
+   *
+   * Messages are filtered against each device's
+   * lastPersistedMsgTs watermark so we only send packets that
+   * haven't already been durably stored — without this, every
+   * device resends its full 100-message buffer on every 60s
+   * persistence cycle indefinitely.
    */
   buildPersistenceOps(devices) {
     const deviceUpdates = [];
     const deviceMessageOps = [];
     const deviceAlertOps = [];
+    const watermarks = new Map();
 
-    const upsertByImeiTs = (imei, ts, body) => ({
+    const upsertByImeiTsEvt = (imei, ts, evt, body) => ({
       updateOne: {
-        filter: { "meta.imei": imei, "meta.ts": ts },
-        update: { $setOnInsert: { meta: { imei, ts }, body } },
+        filter: { "meta.imei": imei, "meta.ts": ts, "meta.evt": evt },
+        update: { $setOnInsert: { meta: { imei, ts, evt }, body } },
         upsert: true,
       },
     });
@@ -1068,45 +1118,43 @@ class TeltonikaController {
       });
 
       /*
-       * Latest messages.
+       * Only-unpersisted messages.
        */
-      for (const item of data.unstructured || []) {
-        const ts = Number(item?.state?.reported?.ts);
+      const watermark = data.lastPersistedMsgTs || 0;
+      let maxTs = watermark;
 
-        if (Number.isFinite(ts)) {
-          deviceMessageOps.push(upsertByImeiTs(imei, ts, item));
+      for (const item of data.unstructured || []) {
+        const ts = item.state.reported.ts;
+
+        if (ts <= watermark) {
+          continue;
         }
+
+        const evt = item.state.reported.evt;
+        deviceMessageOps.push(upsertByImeiTsEvt(imei, ts, evt, item));
+
+        if (ts > maxTs) {
+          maxTs = ts;
+        }
+      }
+
+      if (maxTs > watermark) {
+        watermarks.set(imei, maxTs);
       }
 
       /*
-       * Alerts.
+       * Alerts. Small, active-alert lists only, so it's cheap
+       * enough to keep re-syncing all of them (idempotent via
+       * $setOnInsert).
        */
       for (const item of data.structured.alerts.list || []) {
-        const ts = Number(item?.ts);
-
-        if (Number.isFinite(ts)) {
-          deviceAlertOps.push(upsertByImeiTs(imei, ts, item));
-        }
+        const ts = item.ts;
+        const evt = item.evt;
+        deviceAlertOps.push(upsertByImeiTsEvt(imei, ts, evt, item));
       }
     }
 
-    return { deviceUpdates, deviceMessageOps, deviceAlertOps };
-  }
-
-  // ============================================================
-  // PACKET FILTER
-  // ============================================================
-
-  isAcceptablePacket(ts, windowSeconds = 30) {
-    const timestamp = Number(ts);
-
-    if (!Number.isFinite(timestamp)) {
-      return false;
-    }
-
-    const diffSeconds = Math.abs(Date.now() - timestamp) / 1000;
-
-    return diffSeconds <= windowSeconds;
+    return { deviceUpdates, deviceMessageOps, deviceAlertOps, watermarks };
   }
 }
 

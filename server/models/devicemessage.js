@@ -8,10 +8,9 @@ const deviceMessageSchema = new mongoose.Schema(
   {
     timestamps: true,
     capped: {
-      size: 10 * 1024 * 1024,
-      max: 5000,
+      max: 50000,
     },
-  }
+  },
 );
 
 module.exports = mongoose.model("DeviceMessage", deviceMessageSchema);
