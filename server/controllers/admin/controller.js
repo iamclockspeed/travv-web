@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
+// const bcrypt = require("bcrypt");
 const Operator = require("../../models/operators");
 const Vehicle = require("../../models/vehicles");
 const Device = require("../../models/devices");

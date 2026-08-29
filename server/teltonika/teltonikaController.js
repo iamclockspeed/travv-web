@@ -53,6 +53,21 @@ class TeltonikaController {
     this.fastData.set("routes", new Map());
     this.fastData.set("routesByImei", new Map());
 
+    /*
+     * IMPORTANT:
+     *
+     * structured.alerts.list contains ONLY currently active alerts.
+     *
+     * pendingDeviceAlerts contains alert events that have been created
+     * but have not yet been successfully persisted to DeviceAlert.
+     *
+     * This prevents a short-lived alert from being lost when it is
+     * created and cleared between two persistence cycles.
+     *
+     * Map<imei, Array<alert>>
+     */
+    this.pendingDeviceAlerts = new Map();
+
     this.tracker = null;
 
     this.forcedRefresh = null;
@@ -322,6 +337,12 @@ class TeltonikaController {
      * succeeded.
      */
     this.fastData.set("devices", hydratedDevices);
+
+    /*
+     * No pending alerts are recreated during hydration.
+     * Historical alerts are already in DeviceAlert.
+     */
+    this.pendingDeviceAlerts.clear();
 
     console.log(`[Teltonika] Hydrated ` + `${hydratedDevices.size} devices`);
   }
@@ -736,16 +757,93 @@ class TeltonikaController {
   // ============================================================
 
   /*
-   * Simple ON/OFF alert: IO value 1 sets the alert, IO value 0
-   * clears it, anything else leaves it as-is. Extracted as a
-   * method (rather than a closure rebuilt on every call) since
-   * deviceAlertsUpdate runs on every incoming packet.
+   * Queue an alert event for durable persistence.
+   *
+   * IMPORTANT:
+   * This queue is independent from active alerts.
+   *
+   * Therefore:
+   *
+   *   alert ON
+   *   alert OFF
+   *
+   * before the persistence loop still results in
+   * the alert being written to DeviceAlert.
    */
-  toggleAlert(alertsMap, common, ioCode, key, type, reported) {
+  queueDeviceAlert(imei, alert) {
+    if (!imei || !alert) {
+      return;
+    }
+
+    let queue = this.pendingDeviceAlerts.get(imei);
+
+    if (!queue) {
+      queue = [];
+      this.pendingDeviceAlerts.set(imei, queue);
+    }
+
+    /*
+     * Prevent duplicate queue entries for the
+     * exact same event.
+     *
+     * Same IMEI + timestamp + event is also the
+     * uniqueness condition used by persistence.
+     */
+    const duplicate = queue.some(
+      (item) => item.ts === alert.ts && item.evt === alert.evt,
+    );
+
+    if (duplicate) {
+      return;
+    }
+
+    queue.push({
+      ...alert,
+    });
+
+    console.log(
+      `[Teltonika] Alert queued | ` +
+        `IMEI=${imei} | ` +
+        `type=${alert.message} | ` +
+        `ts=${alert.ts} | ` +
+        `evt=${alert.evt}`,
+    );
+  }
+
+  /*
+   * Simple ON/OFF alert:
+   *
+   *   IO value 1 -> activate
+   *   IO value 0 -> clear
+   *   anything else -> unchanged
+   *
+   * onCreate is called ONLY when the alert transitions
+   * from inactive -> active.
+   */
+  toggleAlert(alertsMap, common, ioCode, key, type, reported, onCreate) {
     const value = Number(reported[ioCode]);
 
+    const wasActive = alertsMap.has(key);
+
     if (value === 1) {
-      alertsMap.set(key, { ...common, evt: ioCode, type, message: key });
+      const alert = {
+        ...common,
+        evt: ioCode,
+        type,
+        message: key,
+      };
+
+      alertsMap.set(key, alert);
+
+      /*
+       * Only queue an alert on OFF -> ON.
+       *
+       * This is important because every incoming packet
+       * may contain the same IO=1 value.
+       */
+      if (!wasActive && typeof onCreate === "function") {
+        onCreate(alert);
+      }
     } else if (value === 0) {
       alertsMap.delete(key);
     }
@@ -753,10 +851,13 @@ class TeltonikaController {
 
   deviceAlertsUpdate(device, imei) {
     const latest = this.getLatestUnstructured(device);
+
     const reported = latest.state.reported;
 
     const alerts = device.structured.alerts;
+
     alerts.ts = reported.ts;
+
     alerts.list ||= [];
 
     const alertsMap = new Map(
@@ -764,13 +865,16 @@ class TeltonikaController {
     );
 
     const [lat, lng] = reported.latlng?.split(",").map(Number) || [0, 0];
+
     const alt = Number(reported.alt);
 
     const common = {
       ts: alerts.ts,
       locs: {
         lat: Number.isFinite(lat) ? lat : 0,
+
         lng: Number.isFinite(lng) ? lng : 0,
+
         alt: Number.isFinite(alt) ? alt : 0,
       },
     };
@@ -785,39 +889,64 @@ class TeltonikaController {
       "over speeding",
       "safety",
       reported,
+      (alert) => this.queueDeviceAlert(imei, alert),
     );
 
     /*
      * Geofence violation.
      */
-    const routeViolation = this.checkRouteViolation(imei, { lat, lng });
+    const routeViolation = this.checkRouteViolation(imei, {
+      lat,
+      lng,
+    });
 
     if (routeViolation) {
+      /*
+       * Only create/queue when it becomes active.
+       */
       if (!alertsMap.has("geofence violation")) {
-        alertsMap.set("geofence violation", {
+        const alert = {
           ...common,
           evt: GEOFENCE_EVT,
           type: "safety",
           message: "geofence violation",
-        });
+        };
+
+        alertsMap.set("geofence violation", alert);
+
+        this.queueDeviceAlert(imei, alert);
       }
     } else {
       alertsMap.delete("geofence violation");
     }
 
     /*
-     * Crash. Stays active until a full day has passed
+     * Crash.
+     *
+     * Stays active until a full day has passed
      * without a new crash reading.
      */
     if (Number(reported[IO.CRASH]) > 0) {
-      alertsMap.set("crash detected", {
+      const wasActive = alertsMap.has("crash detected");
+
+      const alert = {
         ...common,
         evt: IO.CRASH,
         type: "safety",
         message: "crash detected",
-      });
+      };
+
+      alertsMap.set("crash detected", alert);
+
+      /*
+       * Only persist the first crash event.
+       */
+      if (!wasActive) {
+        this.queueDeviceAlert(imei, alert);
+      }
     } else {
       const lastAlertTS = alertsMap.get("crash detected")?.ts;
+
       const ONE_DAY = 24 * 60 * 60 * 1000;
 
       if (lastAlertTS && Date.now() - lastAlertTS >= ONE_DAY) {
@@ -835,22 +964,35 @@ class TeltonikaController {
       "excessive idle",
       "behaviour",
       reported,
+      (alert) => this.queueDeviceAlert(imei, alert),
     );
 
     /*
-     * Low battery (currently GPS battery), with hysteresis
-     * to avoid flapping: set at <=15%, clear at >=50%.
+     * Low battery.
+     *
+     * Hysteresis:
+     *   <=15% -> activate
+     *   >=50% -> clear
      */
     const battery = Number(reported[IO.GPS_BATTERY]);
 
     if (battery <= 15) {
-      if (!alertsMap.has("low battery")) {
-        alertsMap.set("low battery", {
-          ...common,
-          evt: IO.GPS_BATTERY,
-          type: "health",
-          message: "low battery",
-        });
+      const wasActive = alertsMap.has("low battery");
+
+      const alert = alertsMap.get("low battery") || {
+        ...common,
+        evt: IO.GPS_BATTERY,
+        type: "health",
+        message: "low battery",
+      };
+
+      alertsMap.set("low battery", alert);
+
+      /*
+       * Queue only on inactive -> active.
+       */
+      if (!wasActive) {
+        this.queueDeviceAlert(imei, alert);
       }
     } else if (battery >= 50) {
       alertsMap.delete("low battery");
@@ -866,6 +1008,7 @@ class TeltonikaController {
       "unplugged",
       "maintenance",
       reported,
+      (alert) => this.queueDeviceAlert(imei, alert),
     );
 
     /*
@@ -878,8 +1021,15 @@ class TeltonikaController {
       "towing",
       "maintenance",
       reported,
+      (alert) => this.queueDeviceAlert(imei, alert),
     );
 
+    /*
+     * This remains the CURRENT ACTIVE ALERT list.
+     *
+     * It is intentionally independent from
+     * pendingDeviceAlerts.
+     */
     alerts.list = [...alertsMap.values()];
   }
 
@@ -1034,39 +1184,71 @@ class TeltonikaController {
         return;
       }
 
-      const { deviceUpdates, deviceMessageOps, deviceAlertOps, watermarks } =
-        this.buildPersistenceOps(devices);
+      const {
+        deviceUpdates,
+        deviceMessageOps,
+        deviceAlertOps,
+        watermarks,
+        pendingAlertImeis,
+      } = this.buildPersistenceOps(devices);
 
       const operations = [];
 
       if (deviceUpdates.length) {
-        operations.push(Device.bulkWrite(deviceUpdates, { ordered: false }));
+        operations.push(
+          Device.bulkWrite(deviceUpdates, {
+            ordered: false,
+          }),
+        );
       }
 
       if (deviceMessageOps.length) {
         operations.push(
-          DeviceMessage.bulkWrite(deviceMessageOps, { ordered: false }),
+          DeviceMessage.bulkWrite(deviceMessageOps, {
+            ordered: false,
+          }),
         );
       }
 
       if (deviceAlertOps.length) {
         operations.push(
-          DeviceAlert.bulkWrite(deviceAlertOps, { ordered: false }),
+          DeviceAlert.bulkWrite(deviceAlertOps, {
+            ordered: false,
+          }),
         );
       }
 
+      /*
+       * IMPORTANT:
+       *
+       * All writes must succeed before advancing
+       * either message watermarks or pending alerts.
+       */
       await Promise.all(operations);
 
       /*
-       * Only advance the "already persisted" watermark after the
-       * writes actually succeeded, so a failed cycle retries the
-       * same messages next time instead of silently losing them.
+       * Only advance the "already persisted"
+       * message watermark after successful writes.
        */
       for (const [imei, ts] of watermarks) {
         const device = devices.get(imei);
+
         if (device) {
           device.lastPersistedMsgTs = ts;
         }
+      }
+
+      /*
+       * IMPORTANT:
+       *
+       * Now that DeviceAlert.bulkWrite() succeeded,
+       * remove the pending alert events.
+       *
+       * If the DB write failed, this section is never reached,
+       * so the alerts remain queued for the next cycle.
+       */
+      for (const imei of pendingAlertImeis) {
+        this.pendingDeviceAlerts.delete(imei);
       }
 
       console.log(
@@ -1076,6 +1258,11 @@ class TeltonikaController {
           `alerts=${deviceAlertOps.length}`,
       );
     } catch (error) {
+      /*
+       * DO NOT clear pendingDeviceAlerts here.
+       *
+       * The next persistence cycle will retry them.
+       */
       console.error("[Teltonika] DB persistence failed:", error);
     } finally {
       this.isPersisting = false;
@@ -1083,14 +1270,8 @@ class TeltonikaController {
   }
 
   /*
-   * Builds the bulk write op lists for devices, messages,
-   * and alerts from the current in-memory device map.
-   *
-   * Messages are filtered against each device's
-   * lastPersistedMsgTs watermark so we only send packets that
-   * haven't already been durably stored — without this, every
-   * device resends its full 100-message buffer on every 60s
-   * persistence cycle indefinitely.
+   * Builds the bulk write op lists for devices,
+   * messages, and alert events.
    */
   buildPersistenceOps(devices) {
     const deviceUpdates = [];
@@ -1098,10 +1279,31 @@ class TeltonikaController {
     const deviceAlertOps = [];
     const watermarks = new Map();
 
+    /*
+     * Track which devices contributed pending alert
+     * events during this persistence cycle.
+     */
+    const pendingAlertImeis = new Set();
+
     const upsertByImeiTsEvt = (imei, ts, evt, body) => ({
       updateOne: {
-        filter: { "meta.imei": imei, "meta.ts": ts, "meta.evt": evt },
-        update: { $setOnInsert: { meta: { imei, ts, evt }, body } },
+        filter: {
+          "meta.imei": imei,
+          "meta.ts": ts,
+          "meta.evt": evt,
+        },
+
+        update: {
+          $setOnInsert: {
+            meta: {
+              imei,
+              ts,
+              evt,
+            },
+            body,
+          },
+        },
+
         upsert: true,
       },
     });
@@ -1112,8 +1314,15 @@ class TeltonikaController {
        */
       deviceUpdates.push({
         updateOne: {
-          filter: { imei },
-          update: { $set: { structuredTrackingData: data.structured } },
+          filter: {
+            imei,
+          },
+
+          update: {
+            $set: {
+              structuredTrackingData: data.structured,
+            },
+          },
         },
       });
 
@@ -1121,6 +1330,7 @@ class TeltonikaController {
        * Only-unpersisted messages.
        */
       const watermark = data.lastPersistedMsgTs || 0;
+
       let maxTs = watermark;
 
       for (const item of data.unstructured || []) {
@@ -1131,6 +1341,7 @@ class TeltonikaController {
         }
 
         const evt = item.state.reported.evt;
+
         deviceMessageOps.push(upsertByImeiTsEvt(imei, ts, evt, item));
 
         if (ts > maxTs) {
@@ -1143,18 +1354,47 @@ class TeltonikaController {
       }
 
       /*
-       * Alerts. Small, active-alert lists only, so it's cheap
-       * enough to keep re-syncing all of them (idempotent via
-       * $setOnInsert).
+       * --------------------------------------------------------
+       * ACTIVE ALERTS
+       * --------------------------------------------------------
+       *
+       * We intentionally DO NOT use active alerts as the
+       * only source for DeviceAlert persistence anymore.
+       *
+       * Active alerts can disappear before the 60-second
+       * persistence interval.
        */
-      for (const item of data.structured.alerts.list || []) {
-        const ts = item.ts;
-        const evt = item.evt;
-        deviceAlertOps.push(upsertByImeiTsEvt(imei, ts, evt, item));
+
+      /*
+       * --------------------------------------------------------
+       * PENDING ALERT EVENTS
+       * --------------------------------------------------------
+       *
+       * These are alert creations that occurred since the
+       * previous successful persistence.
+       */
+      const pendingAlerts = this.pendingDeviceAlerts.get(imei) || [];
+
+      if (pendingAlerts.length) {
+        pendingAlertImeis.add(imei);
+
+        for (const item of pendingAlerts) {
+          const ts = item.ts;
+
+          const evt = item.evt;
+
+          deviceAlertOps.push(upsertByImeiTsEvt(imei, ts, evt, item));
+        }
       }
     }
 
-    return { deviceUpdates, deviceMessageOps, deviceAlertOps, watermarks };
+    return {
+      deviceUpdates,
+      deviceMessageOps,
+      deviceAlertOps,
+      watermarks,
+      pendingAlertImeis,
+    };
   }
 }
 
