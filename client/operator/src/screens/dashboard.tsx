@@ -12,10 +12,10 @@ import SpeedIcon from "@mui/icons-material/Speed";
 import WrongLocationIcon from "@mui/icons-material/WrongLocation";
 import CarCrashIcon from "@mui/icons-material/CarCrash";
 import HourglassTopIcon from "@mui/icons-material/HourglassTop";
-import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
+// import LocalGasStationIcon from "@mui/icons-material/LocalGasStation";
 import PowerOffIcon from "@mui/icons-material/PowerOff";
 import CarRepairIcon from "@mui/icons-material/CarRepair";
-import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
+// import BatteryCharging20Icon from "@mui/icons-material/BatteryCharging20";
 
 interface TypeCounts {
   totalVehicles: number;
@@ -150,12 +150,12 @@ const Dashboard = () => {
                 onClick={() => navigate("/excessive-idle-vehicles")}
               ></DashCard>
 
-              <DashCard
+              {/* <DashCard
                 v1={stats.lowFuelVehicles}
                 v2="Low Fuel Vehicles"
                 icon={<LocalGasStationIcon fontSize="large" />}
                 onClick={() => navigate("/low-fuel-vehicles")}
-              ></DashCard>
+              ></DashCard> */}
             </Grid>
           </Box>
 
@@ -166,12 +166,12 @@ const Dashboard = () => {
               </Typography>
             </Box>
             <Grid container spacing={2} mt={1}>
-              <DashCard
+              {/* <DashCard
                 v1={stats.lowBatteryVehicles}
                 v2="Low Battery Alerts"
                 icon={<BatteryCharging20Icon fontSize="large" />}
                 onClick={() => navigate("/low-battery-vehicles")}
-              ></DashCard>
+              ></DashCard> */}
 
               <DashCard
                 v1={stats.unpluggedVehicles}
