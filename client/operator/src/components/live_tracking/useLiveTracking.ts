@@ -30,7 +30,7 @@ export function useLiveTracking(
 
   // ── 1. Vehicle list for the dropdown ─────────────────────────────────────
   const { data: vehicleList, isLoading: vehiclesLoading } =
-    useGetList<VehicleRecord>("totalVehicles", {
+    useGetList<VehicleRecord>("totalVehiclesOverview", {
       pagination: { page: 1, perPage: 100 },
       sort: { field: "registrationNumber", order: "ASC" },
     });

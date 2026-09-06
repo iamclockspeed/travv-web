@@ -7,7 +7,7 @@ import {
   Autocomplete,
 } from "@mui/material";
 
-import type { RoutePoint, StopStatus, VehicleRecord } from "./types";
+import type { RoutePoint, StopStatus } from "./types";
 import StopItem from "./StopItem";
 
 interface VehicleOption {

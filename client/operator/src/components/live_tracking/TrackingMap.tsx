@@ -16,7 +16,7 @@ import type {
   VehicleRecord,
 } from "./types";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, STOP_COLORS } from "./constants";
-import { makeStopIcon, makeVehicleIcon } from "./mapIcons";
+import { makeAlertIcon, makeStopIcon, makeVehicleIcon } from "./mapIcons";
 import { getLocLatLng } from "./utils";
 import MapController from "./MapController";
 
@@ -53,6 +53,10 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
     },
     mapRef,
   ) => {
+    const alerts =
+      vehicleList.find((v) => v.id === selectedVehicleId)?.device
+        ?.structuredTrackingData?.alerts?.list || [];
+
     return (
       <Box sx={{ flex: 1, position: "relative" }}>
         <MapContainer
@@ -102,6 +106,7 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
               key={`stop-${stop.index}`}
               position={[stop.coordinates.latitude, stop.coordinates.longitude]}
               icon={makeStopIcon(String(i + 1), STOP_COLORS[stopStatuses[i]])}
+              title={stop.name || `Station ${i + 1}`}
             >
               <Popup>
                 <Box sx={{ minWidth: 160 }}>
@@ -138,6 +143,37 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
             </Marker>
           ))}
 
+          {/* ── SELECTED VEHICLE ONLY: alerts markers ── */}
+          {alerts.map((alert) => (
+            <Marker
+              key={`alert-${alert.ts}`}
+              position={[alert.locs.lat, alert.locs.lat]}
+              icon={makeAlertIcon(alert.message)}
+              title={alert.message}
+            >
+              <Popup>
+                <Box sx={{ minWidth: 160 }}>
+                  <Typography
+                    sx={{ fontWeight: 700, color: "#8167e8", fontSize: 13 }}
+                  >
+                    Alert: {alert.type}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 15,
+                      color: "#8167e8",
+                      fontWeight: 600,
+                      lineHeight: 1.4,
+                      mt: 0.5,
+                    }}
+                  >
+                    {alert.message}
+                  </Typography>
+                </Box>
+              </Popup>
+            </Marker>
+          ))}
+
           {/* ── ALL VEHICLES: bus markers (always on map) ── */}
           {allVehicleLocs.map((loc) => {
             const isSelected = loc.id === selectedVehicleId;
@@ -148,6 +184,7 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
                 position={getLocLatLng(loc)}
                 icon={makeVehicleIcon(isSelected)}
                 zIndexOffset={isSelected ? 1000 : 0}
+                title={vehicleData && vehicleData.registrationNumber}
               >
                 <Popup>
                   <Box sx={{ minWidth: 150 }}>

@@ -16,14 +16,31 @@ export interface RoutePoint {
 }
 
 export interface LiveLocsRecord {
-  timestamp: number;
+  ts: number;
   lat: number;
   lng: number;
   alt: number;
 }
 
+export interface LiveAlertsRecord {
+  ts: number;
+  evt: number;
+  type: string;
+  message: string;
+  locs: {
+    lat: number;
+    lng: number;
+    alt: number;
+  };
+}
+
 export interface LiveStructuredRecord {
+  ts: number;
   locs: LiveLocsRecord;
+  alerts?: {
+    ts: number;
+    list: LiveAlertsRecord[];
+  };
 }
 
 export interface VehicleLiveStructuredStats {
@@ -34,6 +51,9 @@ export interface VehicleLiveStructuredStats {
 export interface VehicleRecord {
   id: string | number;
   registrationNumber: string;
+  device?: {
+    structuredTrackingData?: LiveStructuredRecord;
+  };
 }
 
 export interface VehicleRouteProps {

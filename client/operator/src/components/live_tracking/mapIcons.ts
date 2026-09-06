@@ -1,5 +1,6 @@
 import L from "leaflet";
 import logo from "../../assets/logo.png";
+import { ALERT_MAP } from "../vehicles_list/constants";
 
 // ─── Leaflet default-icon fix ─────────────────────────────────────────────
 // Leaflet's default marker icon paths break under most bundlers; this patches
@@ -26,6 +27,26 @@ export const makeStopIcon = (label: string, color: string) =>
       font-size:10px;font-weight:800;color:#111;font-family:monospace;
     ">${label}</div>`,
   });
+
+export const makeAlertIcon = (alertType: string) => {
+  const { icon, color } = ALERT_MAP[alertType.toLowerCase()] || {
+    icon: "⚠️",
+    color: "#7f8c8d",
+  };
+
+  return L.divIcon({
+    className: "",
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    html: `<div style="
+      width:28px;height:28px;border-radius:50%;
+      background:${color};border:3px solid #fff;
+      box-shadow:0 0 10px ${color}99,0 2px 6px #0006;
+      display:flex;align-items:center;justify-content:center;
+      font-size:10px;font-weight:800;color:#111;font-family:monospace;
+    ">${icon}</div>`,
+  });
+};
 
 /**
  * Bus marker icon.
