@@ -41,6 +41,12 @@ export interface LiveStructuredRecord {
     ts: number;
     list: LiveAlertsRecord[];
   };
+  general?: {
+    ts: number;
+    status: string;
+    ignition: string;
+    moving: string;
+  };
 }
 
 export interface VehicleLiveStructuredStats {
@@ -51,6 +57,12 @@ export interface VehicleLiveStructuredStats {
 export interface VehicleRecord {
   id: string | number;
   registrationNumber: string;
+  type: string;
+  make: string;
+  model: string;
+  images: {
+    url: string;
+  }[];
   device?: {
     structuredTrackingData?: LiveStructuredRecord;
   };

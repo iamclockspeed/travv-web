@@ -53,19 +53,19 @@ export const makeAlertIcon = (alertType: string) => {
  * selected=true  → larger, pulsing purple ring
  * selected=false → smaller, plain white ring
  */
-export const makeVehicleIcon = (selected: boolean) =>
+export const makeVehicleIcon = (selected: boolean, vehicleStatus: string) =>
   L.divIcon({
     className: "",
     iconSize: [selected ? 36 : 28, selected ? 36 : 28],
     iconAnchor: [selected ? 18 : 14, selected ? 18 : 14],
     html: `
     <div style="
-      border: ${selected ? "2px solid #7E59E8" : "1px solid white"};
+      border: ${selected ? (vehicleStatus !== "offline" ? "2px solid #7E59E8" : "1px solid white") : "1px solid white"};
       width:${selected ? 36 : 28}px;
       height:${selected ? 36 : 28}px;
       border-radius:50%;
       overflow:hidden;
-      animation:${selected ? "vPulse 1.4s ease-in-out infinite" : "none"};
+      animation:${vehicleStatus !== "offline" ? "vPulse 1.4s ease-in-out infinite" : "none"};
     ">
       <img src=${logo} alt="Bus" style="width:100%;height:100%;" />
     </div>

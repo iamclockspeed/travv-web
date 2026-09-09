@@ -16,8 +16,9 @@ import type {
   VehicleRecord,
 } from "./types";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, STOP_COLORS } from "./constants";
+import { ALERT_MAP } from "../vehicles_list/constants";
 import { makeAlertIcon, makeStopIcon, makeVehicleIcon } from "./mapIcons";
-import { getLocLatLng } from "./utils";
+import { getLocLatLng, formatKm } from "./utils";
 import MapController from "./MapController";
 
 interface TrackingMapProps {
@@ -53,9 +54,9 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
     },
     mapRef,
   ) => {
+    const selectedVehicle = vehicleList.find((v) => v.id === selectedVehicleId);
     const alerts =
-      vehicleList.find((v) => v.id === selectedVehicleId)?.device
-        ?.structuredTrackingData?.alerts?.list || [];
+      selectedVehicle?.device?.structuredTrackingData?.alerts?.list || [];
 
     return (
       <Box sx={{ flex: 1, position: "relative" }}>
@@ -82,7 +83,7 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
           {fullPath.length > 1 && (
             <Polyline
               positions={fullPath}
-              pathOptions={{ color: "#fff", weight: 3, dashArray: "7,6" }}
+              pathOptions={{ color: "#fff", weight: 5, dashArray: "1,10" }}
             />
           )}
 
@@ -111,31 +112,56 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
               <Popup>
                 <Box sx={{ minWidth: 160 }}>
                   <Typography
-                    sx={{ fontWeight: 700, color: "#8167e8", fontSize: 13 }}
+                    sx={{
+                      fontWeight: 700,
+                      color: "#8167e8",
+                      fontSize: 13,
+                    }}
                   >
                     Stop {i + 1}
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: 15,
+                      fontSize: 12,
                       color: "#8167e8",
                       fontWeight: 600,
-                      lineHeight: 1.4,
-                      mt: 0.5,
                     }}
                   >
-                    {stop.name || `Station ${i + 1}`}
+                    This Stop: {formatKm(stop.cumulative_km ?? 0)}
+                    <br></br>
+                    {stop.name}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "#766e95",
+                      fontSize: 12,
+                    }}
+                  >
+                    Next Stop:
+                    {formatKm(
+                      i === stops.length - 1
+                        ? 0
+                        : (stops[i + 1].segment_km ?? 0),
+                    )}
+                    <br></br>
+                    {i === stops.length - 1
+                      ? "No Next Stop"
+                      : stops[i + 1].name}
                   </Typography>
                   <Chip
-                    label="● STATION"
+                    label={
+                      "● " +
+                      stopStatuses[i].charAt(0).toUpperCase() +
+                      stopStatuses[i].slice(1)
+                    }
                     size="small"
                     sx={{
                       mt: 1,
                       height: 18,
                       fontSize: 9,
-                      bgcolor: "rgba(93,0,255,0.12)",
-                      color: "#6e2ed5",
-                      border: "1px solid rgba(72,0,255,0.3)",
+                      bgcolor: STOP_COLORS[stopStatuses[i]],
+                      color: "#000000",
+                      border: "1px solid #828282",
                     }}
                   />
                 </Box>
@@ -152,23 +178,166 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
               title={alert.message}
             >
               <Popup>
-                <Box sx={{ minWidth: 160 }}>
-                  <Typography
-                    sx={{ fontWeight: 700, color: "#8167e8", fontSize: 13 }}
-                  >
-                    Alert: {alert.type}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: 15,
+                <Box
+                  sx={{
+                    minWidth: 260,
+                    maxWidth: 300,
+                    borderRadius: 2,
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {(() => {
+                    const alertType = alert.message?.toLowerCase();
+                    const alertConfig = ALERT_MAP[alertType] ?? {
+                      icon: "⚠️",
                       color: "#8167e8",
-                      fontWeight: 600,
-                      lineHeight: 1.4,
-                      mt: 0.5,
-                    }}
-                  >
-                    {alert.message}
-                  </Typography>
+                    };
+
+                    return (
+                      <>
+                        <Typography
+                          sx={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "#999",
+                            textTransform: "uppercase",
+                            letterSpacing: 0.8,
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          Vehicle Alert{" "}
+                          {selectedVehicle &&
+                            "(" + selectedVehicle.registrationNumber + ")"}
+                        </Typography>
+                        {/* Header */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            {/* Alert Icon */}
+                            <Box
+                              sx={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: "10px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: `${alertConfig.color}15`,
+                                border: `1px solid ${alertConfig.color}30`,
+                                fontSize: 17,
+                              }}
+                            >
+                              {alertConfig.icon}
+                            </Box>
+
+                            {/* Alert Type */}
+                            <Box>
+                              <Typography
+                                sx={{
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  color: alertConfig.color,
+                                  textTransform: "capitalize",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {alert.type}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* Message */}
+                        <Typography
+                          sx={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: "#222",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {alert.message}
+                        </Typography>
+
+                        {/* Details */}
+                        <Box
+                          sx={{
+                            borderTop: "1px solid #eee",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "grid",
+                              gridTemplateColumns: "72px 1fr",
+                            }}
+                          >
+                            <Typography sx={{ fontSize: 11, color: "#999" }}>
+                              Time
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: "#444",
+                              }}
+                            >
+                              {new Date(alert.ts).toLocaleString()}
+                            </Typography>
+
+                            <Typography sx={{ fontSize: 11, color: "#999" }}>
+                              Latitude
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: "#444",
+                              }}
+                            >
+                              {alert.locs.lat}
+                            </Typography>
+
+                            <Typography sx={{ fontSize: 11, color: "#999" }}>
+                              Longitude
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: "#444",
+                              }}
+                            >
+                              {alert.locs.lng}
+                            </Typography>
+
+                            <Typography sx={{ fontSize: 11, color: "#999" }}>
+                              Altitude
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: "#444",
+                              }}
+                            >
+                              {alert.locs.alt} m
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </>
+                    );
+                  })()}
                 </Box>
               </Popup>
             </Marker>
@@ -178,44 +347,289 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
           {allVehicleLocs.map((loc) => {
             const isSelected = loc.id === selectedVehicleId;
             const vehicleData = vehicleList.find((v) => v.id === loc.id);
+            if (!vehicleData) {
+              return null;
+            }
+
+            const vehicleStatus =
+              vehicleData.device?.structuredTrackingData?.general?.status ??
+              "offline";
+            const vehicleIgnition =
+              vehicleData.device?.structuredTrackingData?.general?.ignition ??
+              "off";
+            const vehicleMoving =
+              vehicleData.device?.structuredTrackingData?.general?.moving ??
+              "stopped";
+
             return (
               <Marker
                 key={`vehicle-${loc.id}`}
                 position={getLocLatLng(loc)}
-                icon={makeVehicleIcon(isSelected)}
+                icon={makeVehicleIcon(isSelected, vehicleStatus)}
                 zIndexOffset={isSelected ? 1000 : 0}
-                title={vehicleData && vehicleData.registrationNumber}
+                title={vehicleData.registrationNumber}
               >
-                <Popup>
-                  <Box sx={{ minWidth: 150 }}>
-                    {vehicleData && (
-                      <Typography>{vehicleData.registrationNumber}</Typography>
-                    )}
+                <Popup closeButton={false}>
+                  <Box
+                    sx={{
+                      width: 280,
+                      overflow: "hidden",
+                      borderRadius: 2,
+                      fontFamily: "Roboto, Arial, sans-serif",
+                    }}
+                  >
+                    {/* Vehicle Image */}
+                    <Box
+                      sx={{
+                        width: "100%",
+                        height: 130,
+                        bgcolor: "#f4f4f5",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {vehicleData.images?.length > 0 ? (
+                        <Box
+                          component="img"
+                          src={
+                            import.meta.env.VITE_BACKEND_HOST +
+                            vehicleData.images[0].url
+                          }
+                          alt={vehicleData.registrationNumber}
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#aaa",
+                            fontSize: 12,
+                          }}
+                        >
+                          No vehicle image
+                        </Box>
+                      )}
+                    </Box>
 
-                    {!isSelected && (
-                      <Button
-                        size="small"
-                        variant="contained"
-                        sx={{ mt: 1, fontSize: 11 }}
-                        onClick={() => onSelectVehicle(loc.id)}
-                      >
-                        Track this vehicle
-                      </Button>
-                    )}
-                    {isSelected && (
-                      <Chip
-                        label="● TRACKING"
-                        size="small"
+                    {/* Information */}
+                    <Box>
+                      {/* Registration + Status */}
+                      <Box
                         sx={{
-                          mt: 1,
-                          height: 18,
-                          fontSize: 9,
-                          bgcolor: "rgba(68,48,124,0.12)",
-                          color: "#44307c",
-                          border: "1px solid rgba(68,48,124,0.3)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 1,
                         }}
-                      />
-                    )}
+                      >
+                        <Typography
+                          sx={{
+                            fontSize: 17,
+                            fontWeight: 700,
+                            color: "#202124",
+                          }}
+                        >
+                          {vehicleData.registrationNumber}
+                        </Typography>
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            px: 0.8,
+                            py: 0.35,
+                            borderRadius: 5,
+                            bgcolor:
+                              vehicleStatus === "online"
+                                ? "rgba(46,125,50,0.1)"
+                                : "rgba(117,117,117,0.1)",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 7,
+                              height: 7,
+                              borderRadius: "50%",
+                              bgcolor:
+                                vehicleStatus === "online" ? "#2e7d32" : "#888",
+                            }}
+                          />
+
+                          <Typography
+                            sx={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              color:
+                                vehicleStatus === "online" ? "#2e7d32" : "#777",
+                            }}
+                          >
+                            {vehicleStatus === "online" ? "LIVE" : "OFFLINE"}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Vehicle details */}
+                      <Typography
+                        sx={{
+                          fontSize: 11,
+                          color: "#777",
+                        }}
+                      >
+                        {vehicleData.type}
+                        {" • "}
+                        {vehicleData.make}
+                        {" • "}
+                        {vehicleData.model}
+                      </Typography>
+
+                      {/* Status */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            flex: 1,
+                            px: 1,
+                            py: 0.8,
+                            bgcolor: "#f7f7f8",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: 9,
+                              color: "#888",
+                            }}
+                          >
+                            MOVEMENT
+                          </Typography>
+
+                          <Typography
+                            sx={{
+                              mt: 0.2,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              textTransform: "capitalize",
+                            }}
+                          >
+                            {vehicleMoving ?? "Stopped"}
+                          </Typography>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            flex: 1,
+                            px: 1,
+                            py: 0.8,
+                            bgcolor: "#f7f7f8",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography
+                            sx={{
+                              fontSize: 9,
+                              color: "#888",
+                            }}
+                          >
+                            IGNITION
+                          </Typography>
+
+                          <Typography
+                            sx={{
+                              mt: 0.2,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {vehicleIgnition ?? "OFF"}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {/* View Full Details */}
+                      {
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="contained"
+                          onClick={() => null}
+                          sx={{
+                            mt: 1.5,
+                            height: 36,
+                            borderRadius: 1.5,
+                            textTransform: "none",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            bgcolor: "#d8d7d8",
+                            color: "black",
+                            boxShadow: "none",
+                            "&:hover": {
+                              bgcolor: "#362563",
+                              color: "white",
+                              boxShadow: "none",
+                            },
+                          }}
+                        >
+                          View Full Details
+                        </Button>
+                      }
+
+                      {/* Track */}
+                      {!isSelected && (
+                        <Button
+                          fullWidth
+                          size="small"
+                          variant="contained"
+                          onClick={() => onSelectVehicle(loc.id)}
+                          sx={{
+                            mt: 1.5,
+                            height: 36,
+                            borderRadius: 1.5,
+                            textTransform: "none",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            bgcolor: "#44307c",
+                            boxShadow: "none",
+                            "&:hover": {
+                              bgcolor: "#362563",
+                              boxShadow: "none",
+                            },
+                          }}
+                        >
+                          Track
+                        </Button>
+                      )}
+
+                      {isSelected && (
+                        <Chip
+                          label="● TRACKING"
+                          size="small"
+                          sx={{
+                            mt: 1.5,
+                            height: 24,
+                            width: "100%",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            bgcolor: "rgba(68,48,124,0.1)",
+                            color: "#44307c",
+                            border: "1px solid rgba(68,48,124,0.25)",
+                          }}
+                        />
+                      )}
+                    </Box>
                   </Box>
                 </Popup>
               </Marker>

@@ -246,7 +246,7 @@ exports.totalVehiclesOverview = async (req, res, next, tController) => {
     const sortOrder = sort[1] === "DESC" ? -1 : 1;
 
     const vehicles = await Vehicle.find(queryFilter)
-      .select("images registrationNumber make model device")
+      .select("images registrationNumber type make model device")
       .populate("device", "imei")
       .sort({ [sortField]: sortOrder });
 
