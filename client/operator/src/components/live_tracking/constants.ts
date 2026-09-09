@@ -2,6 +2,7 @@ import type { LatLngTuple } from "leaflet";
 import type { StopStatus } from "./types";
 
 export const POLL_INTERVAL_MS = 10000;
+export const POLL_INTERVAL_MS_SELECTED = 1000;
 export const MAX_TRAIL_POINTS = 50;
 export const DEFAULT_CENTER: LatLngTuple = [21.5300211, 83.858938]; // India fallback
 export const DEFAULT_ZOOM = 10;
