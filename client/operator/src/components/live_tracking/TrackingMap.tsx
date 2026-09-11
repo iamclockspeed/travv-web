@@ -86,7 +86,7 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
       }
       for (const alert of alerts) {
         points.push({
-          id: `alert-${alert.ts}`,
+          id: `alert-${alert.ts}-${alert.evt}`,
           lat: alert.locs.lat,
           lng: alert.locs.lng,
         });

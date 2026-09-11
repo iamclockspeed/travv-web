@@ -193,7 +193,9 @@ export function useLiveTracking(
 
   const projectionKm = useMemo(() => {
     if (!activeLoc || routePoints.length === 0) return 0;
-    return getDistanceCovered(displayLat, displayLng, routePoints, cumKm);
+    const dist = getDistanceCovered(displayLat, displayLng, routePoints, cumKm);
+    const DIST_PRECISION = 4;
+    return parseFloat(dist.toFixed(DIST_PRECISION));
   }, [activeLoc, displayLat, displayLng, routePoints, cumKm]);
 
   const currentStopArrIdx = useMemo(() => {
@@ -217,6 +219,15 @@ export function useLiveTracking(
       ),
     [stops, currentStopArrIdx],
   );
+
+  // const stopStatuses = useMemo(
+  //   () =>
+  //     stops.map(
+  //       (stop, i): StopStatus =>
+  //         (stop.cumulative_km ?? 0) <= projectionKm ? "passed" : "upcoming",
+  //     ),
+  //   [stops, projectionKm],
+  // );
 
   // ── Trail accumulation + arrival notifications ────────────────────────────
   useEffect(() => {

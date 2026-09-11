@@ -6,12 +6,6 @@ export interface CollidablePoint {
   lng: number;
 }
 
-export interface ResolvedPosition {
-  position: LatLngTuple;
-  isOffset: boolean;
-  truePosition: LatLngTuple;
-}
-
 const EARTH_RADIUS_M = 6371000;
 
 function metersToLatDegrees(m: number): number {
@@ -44,14 +38,20 @@ function haversineMeters(
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
 
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(Math.min(1, h)));
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+}
+
+export interface ResolvedPosition {
+  position: LatLngTuple;
+  isOffset: boolean;
+  truePosition: LatLngTuple;
 }
 
 export function resolveOverlaps(
   points: CollidablePoint[],
   {
     thresholdMeters = 10,
-    radiusMeters = 20,
+    radiusMeters = 10,
   }: {
     thresholdMeters?: number;
     radiusMeters?: number;
@@ -59,77 +59,89 @@ export function resolveOverlaps(
 ): Map<string, ResolvedPosition> {
   const result = new Map<string, ResolvedPosition>();
 
-  const used = new Array(points.length).fill(false);
+  if (points.length === 0) {
+    return result;
+  }
 
-  for (let i = 0; i < points.length; i++) {
-    if (used[i]) continue;
+  // Build clusters.
+  const clusters: CollidablePoint[][] = [];
+  const visited = new Set<string>();
 
-    // Build the cluster transitively.
-    const clusterIdx: number[] = [i];
-    used[i] = true;
+  for (const point of points) {
+    if (visited.has(point.id)) {
+      continue;
+    }
 
-    for (let c = 0; c < clusterIdx.length; c++) {
-      const currentIdx = clusterIdx[c];
-      const current = points[currentIdx];
+    const cluster: CollidablePoint[] = [point];
+    visited.add(point.id);
 
-      for (let j = 0; j < points.length; j++) {
-        if (used[j]) continue;
+    let changed = true;
 
-        const candidate = points[j];
+    // Expand the cluster transitively.
+    while (changed) {
+      changed = false;
 
-        if (
-          haversineMeters(
-            current.lat,
-            current.lng,
-            candidate.lat,
-            candidate.lng,
-          ) <= thresholdMeters
-        ) {
-          clusterIdx.push(j);
-          used[j] = true;
+      for (const candidate of points) {
+        if (visited.has(candidate.id)) {
+          continue;
+        }
+
+        const isClose = cluster.some((member) => {
+          return (
+            haversineMeters(
+              member.lat,
+              member.lng,
+              candidate.lat,
+              candidate.lng,
+            ) <= thresholdMeters
+          );
+        });
+
+        if (isClose) {
+          cluster.push(candidate);
+          visited.add(candidate.id);
+          changed = true;
         }
       }
     }
 
-    // No overlap.
-    if (clusterIdx.length === 1) {
-      const p = points[i];
+    clusters.push(cluster);
+  }
+
+  for (const cluster of clusters) {
+    // Nothing to resolve.
+    if (cluster.length === 1) {
+      const p = cluster[0];
 
       result.set(p.id, {
         position: [p.lat, p.lng],
-        isOffset: false,
         truePosition: [p.lat, p.lng],
+        isOffset: false,
       });
 
       continue;
     }
 
-    // Calculate centroid.
+    // Calculate the shared center.
     const centroidLat =
-      clusterIdx.reduce((sum, idx) => sum + points[idx].lat, 0) /
-      clusterIdx.length;
+      cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length;
 
     const centroidLng =
-      clusterIdx.reduce((sum, idx) => sum + points[idx].lng, 0) /
-      clusterIdx.length;
+      cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length;
 
-    const count = clusterIdx.length;
+    const latOffset = metersToLatDegrees(radiusMeters);
+    const lngOffset = metersToLngDegrees(radiusMeters, centroidLat);
 
-    clusterIdx.forEach((idx, k) => {
-      // Evenly distribute markers around a circle.
-      const angle = (2 * Math.PI * k) / count;
+    cluster.forEach((p, index) => {
+      const angle = (2 * Math.PI * index) / cluster.length;
 
-      const dLat = metersToLatDegrees(radiusMeters) * Math.sin(angle);
-
-      const dLng =
-        metersToLngDegrees(radiusMeters, centroidLat) * Math.cos(angle);
-
-      const p = points[idx];
+      const lat = centroidLat + latOffset * Math.sin(angle);
+      const lng = centroidLng + lngOffset * Math.cos(angle);
 
       result.set(p.id, {
-        position: [centroidLat + dLat, centroidLng + dLng],
-        isOffset: true,
+        position: [lat, lng],
         truePosition: [p.lat, p.lng],
+        isOffset: true,
       });
     });
   }
