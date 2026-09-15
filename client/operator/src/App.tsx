@@ -41,7 +41,7 @@ const App = () => (
       <Route path="/support" element={<Support />} />
       <Route path="/feedback" element={<Feedback />} />
 
-      <Route path="/live-tracking" element={<LiveTracking />} />
+      <Route path="/live-tracking/:id?" element={<LiveTracking />} />
 
       <Route path="/total-vehicles" element={<TotalVehicles />} />
       <Route path="/active-vehicles" element={<ActiveVehicles />} />

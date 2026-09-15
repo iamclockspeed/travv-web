@@ -41,6 +41,7 @@ const VehicleFilters = () => {
             label="Vehicle Number / Model"
             source="vehicle"
             alwaysOn
+            resettable
             key="vehicle"
           />,
         ]}

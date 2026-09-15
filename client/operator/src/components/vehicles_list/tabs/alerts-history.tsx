@@ -67,7 +67,7 @@ const AlertsHistoryTab: React.FC<Props> = ({ vehicle }) => {
                     📅 {new Date(ts).toLocaleString()}
                   </Typography>
 
-                  {locs && (
+                  {/* {locs && (
                     <Typography
                       variant="body2"
                       sx={{ display: "flex", alignItems: "center", gap: 1 }}
@@ -81,7 +81,7 @@ const AlertsHistoryTab: React.FC<Props> = ({ vehicle }) => {
                       </IconButton>
                       Location
                     </Typography>
-                  )}
+                  )} */}
                 </Box>
               </Box>
             );

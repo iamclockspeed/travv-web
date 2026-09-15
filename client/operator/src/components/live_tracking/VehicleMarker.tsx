@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Marker, Polyline, Popup } from "react-leaflet";
 import type { LatLngTuple } from "leaflet";
 import { Box, Button, Chip, Typography } from "@mui/material";
@@ -36,6 +37,7 @@ function VehicleMarkerImpl({
     vehicleData.device?.structuredTrackingData?.general?.ignition ?? "off";
   const vehicleMoving =
     vehicleData.device?.structuredTrackingData?.general?.moving ?? "stopped";
+  const navigate = useNavigate();
 
   return (
     <>
@@ -125,10 +127,9 @@ function VehicleMarkerImpl({
                     alignItems: "center",
                     gap: 0.5,
                     px: 0.8,
-                    py: 0.35,
-                    borderRadius: 5,
+                    borderRadius: 2,
                     bgcolor:
-                      vehicleStatus === "online"
+                      vehicleStatus === "active"
                         ? "rgba(46,125,50,0.1)"
                         : "rgba(117,117,117,0.1)",
                   }}
@@ -138,17 +139,17 @@ function VehicleMarkerImpl({
                       width: 7,
                       height: 7,
                       borderRadius: "50%",
-                      bgcolor: vehicleStatus === "online" ? "#2e7d32" : "#888",
+                      bgcolor: vehicleStatus === "active" ? "#2e7d32" : "#888",
                     }}
                   />
                   <Typography
                     sx={{
                       fontSize: 9,
                       fontWeight: 700,
-                      color: vehicleStatus === "online" ? "#2e7d32" : "#777",
+                      color: vehicleStatus === "active" ? "#2e7d32" : "#777",
                     }}
                   >
-                    {vehicleStatus === "online" ? "LIVE" : "OFFLINE"}
+                    {vehicleStatus.toUpperCase()}
                   </Typography>
                 </Box>
               </Box>
@@ -215,7 +216,15 @@ function VehicleMarkerImpl({
                 fullWidth
                 size="small"
                 variant="contained"
-                onClick={() => null}
+                onClick={() => {
+                  navigate(
+                    `/total-vehicles?filter=${encodeURIComponent(
+                      JSON.stringify({
+                        vehicle: vehicleData.registrationNumber,
+                      }),
+                    )}`,
+                  );
+                }}
                 sx={{
                   mt: 1.5,
                   height: 36,

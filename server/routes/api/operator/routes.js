@@ -77,17 +77,23 @@ module.exports = function (options = {}) {
     },
   );
 
-  router.get(
-    API_PREFIX + "/liveStd",
-    verifyAuthToken,
-    operatorApiController.getAllLiveStd,
-  );
+  router.get(API_PREFIX + "/liveStd", verifyAuthToken, (req, res, next) => {
+    operatorApiController.getAllLiveStd(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
-  router.get(
-    API_PREFIX + "/liveStd/:id",
-    verifyAuthToken,
-    operatorApiController.getOneLiveStd,
-  );
+  router.get(API_PREFIX + "/liveStd/:id", verifyAuthToken, (req, res, next) => {
+    operatorApiController.getOneLiveStd(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
   router.get(
     API_PREFIX + "/routes/:id",

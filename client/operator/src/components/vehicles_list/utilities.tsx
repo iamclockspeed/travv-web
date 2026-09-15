@@ -1,4 +1,5 @@
 import { useRecordContext } from "react-admin";
+import { useNavigate } from "react-router-dom";
 import { Box, IconButton } from "@mui/material";
 import type { Vehicle } from "./types-vehicles";
 import { BADGE_BASE_STYLE, ALERT_MAP } from "./constants";
@@ -44,8 +45,7 @@ export const StatusWithIcon = ({ status }: { status?: string }) => {
 
 export const AlertsWithBadges = () => {
   const record = useRecordContext<Vehicle>();
-  const alerts =
-    record?.device?.structuredTrackingData?.alerts?.list || [];
+  const alerts = record?.device?.structuredTrackingData?.alerts?.list || [];
   const MAX_VISIBLE_ALERTS = 2;
 
   return (
@@ -88,18 +88,33 @@ export const AlertsWithBadges = () => {
   );
 };
 
-export const LocationWithLink = () => {
-  const record = useRecordContext<Vehicle>();
-  return record ? (
+interface LocationWithLinkProps {
+  vehicle?: Vehicle;
+}
+
+export const LocationWithLink = ({ vehicle }: LocationWithLinkProps) => {
+  const contextRecord = useRecordContext<Vehicle>();
+  const navigate = useNavigate();
+
+  const record = vehicle ?? contextRecord;
+
+  if (!record) return null;
+
+  const lat = record.device?.structuredTrackingData?.locs?.lat;
+  const lng = record.device?.structuredTrackingData?.locs?.lng;
+
+  const handleMapClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    navigate(`/live-tracking/${record.id}`);
+  };
+
+  return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      <IconButton title="View on Map">
+      <IconButton title="View on Map" onClick={handleMapClick} size="small">
         <MapIcon />
       </IconButton>
-      <span>
-        {(record.device?.structuredTrackingData?.locs?.lat || "0.00000") +
-          ", " +
-          (record.device?.structuredTrackingData?.locs?.lng || "0.00000")}
-      </span>
+
+      <span>{(lat || "0.00000") + ", " + (lng || "0.00000")}</span>
     </Box>
-  ) : null;
+  );
 };

@@ -1,6 +1,10 @@
 import { Box, Typography, IconButton } from "@mui/material";
 import Slider from "react-slick";
-import { FuelTypeBadge, StatusWithIcon } from "./../utilities";
+import {
+  FuelTypeBadge,
+  StatusWithIcon,
+  LocationWithLink,
+} from "./../utilities";
 import type { Vehicle } from "../types-vehicles";
 import MapIcon from "@mui/icons-material/Map";
 
@@ -28,12 +32,7 @@ const BasicDetailsTab: React.FC<Props> = ({ vehicle }) => {
       </Typography>
       <Typography sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         Location:
-        <IconButton size="large" title="View on Map" sx={{ p: 0.5 }}>
-          <MapIcon fontSize="medium" />
-        </IconButton>
-        {(vehicle.device?.structuredTrackingData?.locs?.lat || "0.00000") +
-          ", " +
-          (vehicle.device?.structuredTrackingData?.locs?.lng || "0.00000")}
+        <LocationWithLink vehicle={vehicle} />
       </Typography>
       {vehicle.images.length > 0 && (
         <Box sx={{ pb: 3 }}>

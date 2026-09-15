@@ -366,47 +366,78 @@ exports.fullVehicleDetails = async (req, res, next, tController) => {
   }
 };
 
-exports.getAllLiveStd = async (req, res) => {
+exports.getAllLiveStd = async (req, res, next, tController) => {
   try {
     const operatorId = req.user.id;
-
     const range = JSON.parse(req.query.range);
 
-    const vehicles = await Vehicle.find({ operator: operatorId }).populate(
-      "device",
+    // Get vehicles and their device IMEI from DB
+    const vehicles = await Vehicle.find({
+      operator: operatorId,
+      device: { $ne: null },
+    })
+      .select("_id device")
+      .populate("device", "imei");
+
+    // Get live device data from memory
+    const imeis = new Set(
+      vehicles
+        .filter((vehicle) => vehicle.device?.imei)
+        .map((vehicle) => vehicle.device.imei),
     );
 
-    const data = [];
+    const fastDataVehicles = tController.filterDevices(imeis);
 
-    vehicles.forEach((vehicle) => {
-      data.push({
-        id: vehicle._id,
-        std: vehicle.device.std,
-      });
-    });
+    // Map IMEI -> live device data
+    const liveDevices = new Map(fastDataVehicles);
 
-    res.setHeader(
-      "Content-Range",
-      `vehicles ${range[0]}-${range[1]}/${data.length}`,
-    );
+    // Build response using in-memory std
+    const data = vehicles
+      .map((vehicle) => {
+        const imei = vehicle.device?.imei;
+        const liveDevice = liveDevices.get(imei);
+
+        if (!liveDevice) {
+          return null;
+        }
+
+        return {
+          id: vehicle._id,
+          std: liveDevice.structured,
+        };
+      })
+      .filter(Boolean);
+
+    const total = data.length;
+
+    const paginatedData = data.slice(range[0], range[1]);
+
+    res.setHeader("Content-Range", `vehicles ${range[0]}-${range[1]}/${total}`);
     res.setHeader("Access-Control-Expose-Headers", "Content-Range");
 
-    return res.json(data);
+    return res.json(paginatedData);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
 
-exports.getOneLiveStd = async (req, res) => {
+exports.getOneLiveStd = async (req, res, next, tController) => {
   try {
-    const vehicle = await Vehicle.findById(req.params.id).populate("device");
+    const vehicle = await Vehicle.findById(req.params.id).populate(
+      "device",
+      "imei",
+    );
 
-    const data = {
+    if (!vehicle) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const fastDataVehicle = tController.getDevice(vehicle.device.imei);
+
+    return res.json({
       id: vehicle._id,
-      std: vehicle.device.std,
-    };
-
-    return res.json(data);
+      std: fastDataVehicle?.structured,
+    });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
