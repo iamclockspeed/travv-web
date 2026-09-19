@@ -220,7 +220,7 @@ exports.uploadOperatorsComdocs = [
 
 // Vehicles Implementations
 
-exports.createVehicle = async (req, res) => {
+exports.createVehicle = async (req, res, tController) => {
   try {
     const { device: deviceId, operator: operatorId, ...vehicleData } = req.body;
 
@@ -244,6 +244,8 @@ exports.createVehicle = async (req, res) => {
       device.vehicle = vehicle._id;
       await device.save();
     }
+
+    tController.hydrateFromPersistentStorageOnDemand();
 
     const data = { id: vehicle._id, ...vehicle.toObject() };
 
@@ -358,7 +360,7 @@ exports.getVehicle = async (req, res) => {
   }
 };
 
-exports.updateVehicle = async (req, res) => {
+exports.updateVehicle = async (req, res, tController) => {
   try {
     const { device: deviceId, operator: operatorId, ...updateData } = req.body;
 
@@ -433,6 +435,8 @@ exports.updateVehicle = async (req, res) => {
 
     await vehicle.save();
 
+    tController.hydrateFromPersistentStorageOnDemand();
+
     const data = {
       id: vehicle._id,
       ...vehicle.toObject(),
@@ -446,13 +450,16 @@ exports.updateVehicle = async (req, res) => {
   }
 };
 
-exports.deleteVehicle = async (req, res) => {
+exports.deleteVehicle = async (req, res, tController) => {
   try {
     await Device.updateMany(
       { vehicle: req.params.id },
       { $set: { vehicle: null } },
     );
     await Vehicle.findByIdAndDelete(req.params.id);
+
+    tController.hydrateFromPersistentStorageOnDemand();
+
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -519,7 +526,7 @@ exports.uploadVehiclesImages = [
 
 // Devices Implementations
 
-exports.createDevice = async (req, res) => {
+exports.createDevice = async (req, res, tController) => {
   try {
     const now = Date.now();
     const emptyStd = {
@@ -551,6 +558,8 @@ exports.createDevice = async (req, res) => {
       id: device._id,
       ...device.toObject(),
     };
+
+    tController.hydrateFromPersistentStorage();
 
     return res.status(201).json(data);
   } catch (err) {
@@ -660,7 +669,7 @@ exports.listDevicesLite = async (req, res) => {
   }
 };
 
-exports.updateDevice = async (req, res) => {
+exports.updateDevice = async (req, res, tController) => {
   try {
     const device = await Device.findById(req.params.id).select(
       "-structuredTrackingData",
@@ -673,19 +682,24 @@ exports.updateDevice = async (req, res) => {
 
     const data = { id: device._id, ...device.toObject() };
 
+    tController.hydrateFromPersistentStorage();
+
     return res.json(data);
   } catch (err) {
     return res.status(400).json({ message: err.message });
   }
 };
 
-exports.deleteDevice = async (req, res) => {
+exports.deleteDevice = async (req, res, tController) => {
   try {
     await Vehicle.updateMany(
       { device: req.params.id },
       { $set: { device: null } },
     );
     await Device.findByIdAndDelete(req.params.id);
+
+    tController.hydrateFromPersistentStorage();
+
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -694,7 +708,7 @@ exports.deleteDevice = async (req, res) => {
 
 // Routes Implementations
 
-exports.createVRoute = async (req, res) => {
+exports.createVRoute = async (req, res, tController) => {
   try {
     const reqObject = req.body;
 
@@ -705,6 +719,8 @@ exports.createVRoute = async (req, res) => {
     const vRoute = new VehicleRoute(req.body);
 
     await vRoute.save();
+
+    tController.hydrateFromPersistentStorageOnDemand();
 
     const data = {
       id: vRoute._id,
@@ -811,7 +827,7 @@ exports.listVRoutesLite = async (req, res) => {
   }
 };
 
-exports.updateVRoute = async (req, res) => {
+exports.updateVRoute = async (req, res, tController) => {
   try {
     const vRoute = await VehicleRoute.findById(req.params.id);
     if (!vRoute) return res.status(404).json({ error: "Not found" });
@@ -826,6 +842,8 @@ exports.updateVRoute = async (req, res) => {
 
     await vRoute.save();
 
+    tController.hydrateFromPersistentStorageOnDemand();
+
     const data = { id: vRoute._id, ...vRoute.toObject() };
 
     return res.json(data);
@@ -834,13 +852,16 @@ exports.updateVRoute = async (req, res) => {
   }
 };
 
-exports.deleteVRoute = async (req, res) => {
+exports.deleteVRoute = async (req, res, tController) => {
   try {
     await Vehicle.updateMany(
       { routes: req.params.id },
       { $pull: { routes: req.params.id } },
     );
     await VehicleRoute.findByIdAndDelete(req.params.id);
+
+    tController.hydrateFromPersistentStorageOnDemand();
+
     return res.json({ message: "Deleted successfully" });
   } catch (err) {
     return res.status(500).json({ message: err.message });

@@ -79,22 +79,39 @@ module.exports = function (options = {}) {
     adminApiController.getVehicle,
   );
 
-  router.post(
-    API_PREFIX + "/vehicles",
-    verifyAuthToken,
-    adminApiController.createVehicle,
-  );
+  router.post(API_PREFIX + "/vehicles", verifyAuthToken, (req, res, next) => {
+    adminApiController.createVehicle(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
   router.put(
     API_PREFIX + "/vehicles/:id",
     verifyAuthToken,
-    adminApiController.updateVehicle,
+    (req, res, next) => {
+      adminApiController.updateVehicle(
+        req,
+        res,
+        next,
+        options.teltonikaController,
+      );
+    },
   );
 
   router.delete(
     API_PREFIX + "/vehicles/:id",
     verifyAuthToken,
-    adminApiController.deleteVehicle,
+    (req, res, next) => {
+      adminApiController.deleteVehicle(
+        req,
+        res,
+        next,
+        options.teltonikaController,
+      );
+    },
   );
 
   router.post(
@@ -135,22 +152,35 @@ module.exports = function (options = {}) {
     adminApiController.getDevice,
   );
 
-  router.post(
-    API_PREFIX + "/devices",
-    verifyAuthToken,
-    adminApiController.createDevice,
-  );
+  router.post(API_PREFIX + "/devices", verifyAuthToken, (req, res, next) => {
+    adminApiController.createDevice(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
-  router.put(
-    API_PREFIX + "/devices/:id",
-    verifyAuthToken,
-    adminApiController.updateDevice,
-  );
+  router.put(API_PREFIX + "/devices/:id", verifyAuthToken, (req, res, next) => {
+    adminApiController.updateDevice(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
   router.delete(
     API_PREFIX + "/devices/:id",
     verifyAuthToken,
-    adminApiController.deleteDevice,
+    (req, res, next) => {
+      adminApiController.deleteDevice(
+        req,
+        res,
+        next,
+        options.teltonikaController,
+      );
+    },
   );
 
   // Routes Implementations
@@ -179,22 +209,35 @@ module.exports = function (options = {}) {
     adminApiController.getVRoute,
   );
 
-  router.post(
-    API_PREFIX + "/routes",
-    verifyAuthToken,
-    adminApiController.createVRoute,
-  );
+  router.post(API_PREFIX + "/routes", verifyAuthToken, (req, res, next) => {
+    adminApiController.createVRoute(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
-  router.put(
-    API_PREFIX + "/routes/:id",
-    verifyAuthToken,
-    adminApiController.updateVRoute,
-  );
+  router.put(API_PREFIX + "/routes/:id", verifyAuthToken, (req, res, next) => {
+    adminApiController.updateVRoute(
+      req,
+      res,
+      next,
+      options.teltonikaController,
+    );
+  });
 
   router.delete(
     API_PREFIX + "/routes/:id",
     verifyAuthToken,
-    adminApiController.deleteVRoute,
+    (req, res, next) => {
+      adminApiController.deleteVRoute(
+        req,
+        res,
+        next,
+        options.teltonikaController,
+      );
+    },
   );
 
   // Feedbacks Implementations

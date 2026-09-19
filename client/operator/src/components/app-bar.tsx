@@ -40,7 +40,7 @@ const pathToTitle = (path: string): string => {
     .map((segment) =>
       segment
         .replace(/[-_]/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase())
+        .replace(/\b\w/g, (char) => char.toUpperCase()),
     );
 
   return segments.join(" / ");
@@ -62,6 +62,7 @@ const CustomAppBar: FC = (props) => {
         <Box display="flex" pl={1}>
           <img
             src={LogoImage}
+            title="beta(v0.1)"
             alt="Logo"
             height="30"
             style={{ marginRight: 10 }}
