@@ -10,6 +10,6 @@ export const SELECTED_ZOOM = 10;
 
 export const STOP_COLORS: Record<StopStatus, string> = {
   passed: "#a8ff3e",
-  current: "#00e5ff",
+  next: "#00e5ff",
   upcoming: "#ffcd00",
 };

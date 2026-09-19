@@ -15,11 +15,20 @@ interface VehicleOption {
   id: string | number;
 }
 
+interface RouteOption {
+  label: string;
+  id: string | number;
+}
+
 interface TrackingSidebarProps {
   vehicleOptions: VehicleOption[];
   vehiclesLoading: boolean;
   selectedVehicleId: string | number | null;
   onSelectVehicle: (vehicleId: string | number | null) => void;
+
+  routeOptions: RouteOption[];
+  selectedRouteId: string | number | null;
+  onSelectRoute: (routeId: string | number | null) => void;
 
   isRouteLoading: boolean;
   routeError: unknown;
@@ -36,6 +45,9 @@ const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
   vehiclesLoading,
   selectedVehicleId,
   onSelectVehicle,
+  routeOptions,
+  selectedRouteId,
+  onSelectRoute,
   isRouteLoading,
   routeError,
   stops,
@@ -66,6 +78,29 @@ const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
             label="Select Vehicle"
             size="small"
             placeholder={vehiclesLoading ? "Loading vehicles…" : ""}
+          />
+        )}
+      />
+
+      <Autocomplete
+        sx={{ mt: 1 }}
+        options={routeOptions}
+        value={routeOptions.find((r) => r.id === selectedRouteId) ?? null}
+        onChange={(_, value) => onSelectRoute(value?.id ?? null)}
+        isOptionEqualToValue={(option, value) => option.id === value.id}
+        disabled={!selectedVehicleId || routeOptions.length === 0}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Select Route"
+            size="small"
+            placeholder={
+              !selectedVehicleId
+                ? "Select a vehicle first"
+                : routeOptions.length === 0
+                  ? "No routes available"
+                  : ""
+            }
           />
         )}
       />
@@ -106,15 +141,15 @@ const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "1fr 3fr 1fr",
+              gridTemplateColumns: "0.1fr 3fr 1fr",
               gap: 1,
               pt: 1,
               mb: 1,
             }}
           >
-            <Typography variant="caption">Arrival</Typography>
+            <Typography variant="caption"></Typography>
             <Typography variant="caption">Stop / Station</Typography>
-            <Typography variant="caption">Departure</Typography>
+            <Typography variant="caption"></Typography>
           </Box>
 
           {stops.map((stop, i) => (

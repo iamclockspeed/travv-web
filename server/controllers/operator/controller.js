@@ -443,21 +443,25 @@ exports.getOneLiveStd = async (req, res, next, tController) => {
   }
 };
 
-exports.getOneVRoute = async (req, res) => {
+exports.getVRoute = async (req, res) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id).populate("routes");
 
-    if (!vehicle) return res.status(404).json({ error: "Not found" });
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
 
-    if (vehicle.routes.length <= 0)
-      return res.status(404).json({ error: "Not found" });
+    if (!vehicle.routes || vehicle.routes.length === 0) {
+      return res.status(404).json({ error: "No routes found" });
+    }
 
-    const data = {
-      id: vehicle.routes[0]._id,
-      points: vehicle.routes[0].pathData.path,
-    };
+    const data = vehicle.routes.map((route) => ({
+      id: route._id,
+      routeName: route.routeName,
+      points: route.pathData.path,
+    }));
 
-    return res.json(data);
+    return res.json({ id: 0, routes: data });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

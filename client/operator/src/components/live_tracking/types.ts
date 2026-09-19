@@ -68,9 +68,15 @@ export interface VehicleRecord {
   };
 }
 
+export interface VehicleRouteResponse {
+  id: string | number;
+  routes: VehicleRouteProps[];
+}
+
 export interface VehicleRouteProps {
   id: string | number;
+  routeName: string;
   points: RoutePoint[];
 }
 
-export type StopStatus = "passed" | "current" | "upcoming";
+export type StopStatus = "passed" | "next" | "upcoming";

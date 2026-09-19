@@ -29,7 +29,7 @@ const StopItem: React.FC<StopItemProps> = ({
   vehicleProjection,
   onClick,
 }) => {
-  const stopColor = status === "upcoming" ? "white" : "#44307c";
+  const stopColor = status === "passed" ? "#44307c" : "white";
   const stopBorderColor = status === "passed" ? "white" : "#7E59E8";
 
   const scale = Math.round(200 / Math.max(maxStopLen, 0.001));
@@ -47,7 +47,7 @@ const StopItem: React.FC<StopItemProps> = ({
     <Box
       sx={{
         display: "grid",
-        gridTemplateColumns: "1fr 3fr 1fr",
+        gridTemplateColumns: "0.1fr 3fr 1fr",
         gap: 1,
         height: `${nextStopLenInPx}px`,
       }}
@@ -119,7 +119,7 @@ const StopItem: React.FC<StopItemProps> = ({
                 : { borderRadius: "50%" }),
             }}
           />
-          {status !== "upcoming" && (
+          {status === "passed" && (
             <Box
               sx={{
                 position: "absolute",

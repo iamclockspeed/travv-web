@@ -98,7 +98,7 @@ module.exports = function (options = {}) {
   router.get(
     API_PREFIX + "/routes/:id",
     verifyAuthToken,
-    operatorApiController.getOneVRoute,
+    operatorApiController.getVRoute,
   );
 
   //---------------------------------- Middleware Implementations ------------------------------//
