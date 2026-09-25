@@ -82,7 +82,7 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
 
       for (const loc of allVehicleLocs) {
         const [lat, lng] = getLocLatLng(loc);
-        points.push({ id: `vehicle-${loc.id}`, lat, lng });
+        points.push({ id: `vehicle-${loc.id}-${loc.std.locs.ts}`, lat, lng });
       }
       for (const alert of alerts) {
         points.push({
@@ -140,14 +140,16 @@ const TrackingMap = forwardRef<LeafletMap, TrackingMapProps>(
             const vehicleData = vehicleById.get(loc.id);
             if (!vehicleData) return null;
 
-            const resolved = resolvedPositions.get(`vehicle-${loc.id}`);
+            const resolved = resolvedPositions.get(
+              `vehicle-${loc.id}-${loc.std.locs.ts}`,
+            );
             const truePosition = getLocLatLng(loc);
             const displayPosition = resolved?.position ?? truePosition;
             const isOffset = resolved?.isOffset ?? false;
 
             return (
               <VehicleMarker
-                key={`vehicle-${loc.id}`}
+                key={`vehicle-${loc.id}-${loc.std.locs.ts}`}
                 loc={loc}
                 vehicleData={vehicleData}
                 isSelected={loc.id === selectedVehicleId}

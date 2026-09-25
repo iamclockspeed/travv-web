@@ -687,6 +687,15 @@ class TeltonikaController {
 
     general.ts = packetTs;
 
+    const diffInSeconds = Math.max(0, (Date.now() - packetTs) / 1000);
+
+    if (diffInSeconds >= 60) {
+      general.ignition = "off";
+      general.moving = "stopped";
+      general.status = "offline";
+      return;
+    }
+
     /*
      * IO 239 = ignition.
      */
@@ -697,44 +706,29 @@ class TeltonikaController {
      */
     general.moving = Number(reported[IO.MOVEMENT]) === 1 ? "moving" : "stopped";
 
-    const diffInSeconds = Math.max(0, (Date.now() - packetTs) / 1000);
-
-    if (diffInSeconds > 30) {
-      general.ignition = "off";
-      general.moving = "stopped";
-    }
-
     /*
-     * Ignition ON and moving.
+     * Ignition ON/OFF and moving.
      */
-    if (general.ignition === "on" && general.moving === "moving") {
-      if (diffInSeconds <= 5) {
-        general.status = "active";
-        return;
-      }
+    if (general.moving === "moving") {
+      general.status = "active";
+      return;
     }
 
     /*
      * Ignition ON and not moving.
      */
     if (general.ignition === "on" && general.moving === "stopped") {
-      if (diffInSeconds <= 20) {
-        general.status = "idle";
-        return;
-      }
+      general.status = "idle";
+      return;
     }
 
     /*
      * Ignition OFF and stopped.
      */
     if (general.ignition === "off" && general.moving === "stopped") {
-      if (diffInSeconds <= 20) {
-        general.status = "parked";
-        return;
-      }
+      general.status = "parked";
+      return;
     }
-
-    general.status = "offline";
   }
 
   // ============================================================
@@ -909,7 +903,10 @@ class TeltonikaController {
       /*
        * Only create/queue when it becomes active.
        */
-      if (!alertsMap.has("geofence violation")) {
+
+      const wasActive = alertsMap.has("geofence violation");
+
+      if (!wasActive) {
         const alert = {
           ...common,
           evt: GEOFENCE_EVT,
