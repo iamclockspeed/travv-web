@@ -59,7 +59,7 @@ const TrackingSidebar: React.FC<TrackingSidebarProps> = ({
   return (
     <Box
       sx={{
-        width: 400,
+        width: 200,
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",

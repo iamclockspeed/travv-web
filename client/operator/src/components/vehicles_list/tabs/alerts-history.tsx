@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Box, Typography, IconButton } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import type { Vehicle } from "../types-vehicles";
 import { ALERT_MAP } from "../constants";
-import MapIcon from "@mui/icons-material/Map";
 
 interface Props {
   vehicle: Vehicle;

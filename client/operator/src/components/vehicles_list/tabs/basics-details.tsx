@@ -1,4 +1,4 @@
-import { Box, Typography, IconButton } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import Slider from "react-slick";
 import {
   FuelTypeBadge,
@@ -6,7 +6,6 @@ import {
   LocationWithLink,
 } from "./../utilities";
 import type { Vehicle } from "../types-vehicles";
-import MapIcon from "@mui/icons-material/Map";
 
 interface Props {
   vehicle: Vehicle;

@@ -32,7 +32,7 @@ const StopItem: React.FC<StopItemProps> = ({
   const stopColor = status === "passed" ? "#44307c" : "white";
   const stopBorderColor = status === "passed" ? "white" : "#7E59E8";
 
-  const scale = Math.round(200 / Math.max(maxStopLen, 0.001));
+  const scale = Math.round(800 / Math.max(maxStopLen, 0.001));
   const nextStopLenInPx = Math.round(nextStopLen * scale);
   const cumulativeLenInPx = Math.round(cumulativeDistance * scale);
   const vehicleProjectionInPx = Math.round(vehicleProjection * scale);

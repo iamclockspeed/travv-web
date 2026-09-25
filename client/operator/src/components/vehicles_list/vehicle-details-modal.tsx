@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import type { VehicleDetailsModalProps, TabPanelProps } from "./types-vehicles";
 import BasicDetailsTab from "./tabs/basics-details";
+import TripsTab from "./tabs/trips";
 import AlertsHistoryTab from "./tabs/alerts-history";
 import DoccumentsTab from "./tabs/doccuments";
 import CloseIcon from "@mui/icons-material/Close";
@@ -71,7 +72,7 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
           scrollButtons="auto"
         >
           <Tab label="Basic Details" />
-          {/* <Tab label="Trips" /> */}
+          <Tab label="Trips" />
           {/* <Tab label="Fuel Logs" /> */}
           <Tab label="Alert History" />
           {/* <Tab label="Maintenance Logs" /> */}
@@ -83,13 +84,18 @@ export const VehicleDetailsModal: React.FC<VehicleDetailsModalProps> = ({
           <BasicDetailsTab vehicle={fullVehicleData} />
         </TabPanel>
 
-        {/* Alert History */}
+        {/* Trips */}
         <TabPanel value={tabIndex} index={1}>
+          <TripsTab vehicle={fullVehicleData} />
+        </TabPanel>
+
+        {/* Alert History */}
+        <TabPanel value={tabIndex} index={2}>
           <AlertsHistoryTab vehicle={fullVehicleData} />
         </TabPanel>
 
         {/* Documents */}
-        <TabPanel value={tabIndex} index={2}>
+        <TabPanel value={tabIndex} index={3}>
           <DoccumentsTab vehicle={fullVehicleData} />
         </TabPanel>
       </DialogContent>

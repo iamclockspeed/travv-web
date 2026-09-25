@@ -699,6 +699,11 @@ class TeltonikaController {
 
     const diffInSeconds = Math.max(0, (Date.now() - packetTs) / 1000);
 
+    if (diffInSeconds > 30) {
+      general.ignition = "off";
+      general.moving = "stopped";
+    }
+
     /*
      * Ignition ON and moving.
      */
