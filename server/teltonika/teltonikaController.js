@@ -16,6 +16,7 @@ const IO = {
   CRASH: "247",
   EXCESSIVE_IDLE: "251",
   GPS_BATTERY: "113",
+  EXT_BATTERY: "66",
   UNPLUGGED: "252",
   TOWING: "246",
 };
