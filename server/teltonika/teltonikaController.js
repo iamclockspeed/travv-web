@@ -12,8 +12,8 @@ const Vehicle = require("../models/vehicles");
 const IO = {
   IGNITION: "239",
   MOVEMENT: "240",
-  OVERSPEED: "255",
   CRASH: "247",
+  SPEED: "24",
   EXCESSIVE_IDLE: "251",
   GPS_BATTERY: "113",
   EXT_BATTERY: "66",
@@ -23,13 +23,17 @@ const IO = {
 
 // Synthetic "IO code" for the geofence alert (not a real Teltonika IO element).
 const GEOFENCE_EVT = 155;
+const OVERSPEED = 156;
+
+// Settings
+const MAX_ECCO_SPEED = 70;
 
 class TeltonikaController {
   constructor(options = {}) {
     // DB connection status closure.
     this.isDBConnected = options.isDBConnected;
 
-    this.defaultRouteWidthInMeters = options.defaultRouteWidthInMeters ?? 30;
+    this.defaultRouteWidthInMeters = options.defaultRouteWidthInMeters ?? 60;
 
     /*
      * Max unstructured packets kept per device, both in memory
@@ -882,15 +886,30 @@ class TeltonikaController {
     /*
      * Overspeed.
      */
-    this.toggleAlert(
-      alertsMap,
-      common,
-      IO.OVERSPEED,
-      "over speeding",
-      "safety",
-      reported,
-      (alert) => this.queueDeviceAlert(imei, alert),
-    );
+    const vehicleSpeed = Number(reported[IO.SPEED]);
+    const speedViolated = vehicleSpeed > MAX_ECCO_SPEED;
+
+    if (speedViolated) {
+      const wasActive = alertsMap.has("over speeding");
+
+      const alert = alertsMap.get("over speeding") || {
+        ...common,
+        evt: OVERSPEED,
+        type: "safety",
+        message: "over speeding",
+      };
+
+      alertsMap.set("over speeding", alert);
+
+      /*
+       * Queue only on inactive -> active.
+       */
+      if (!wasActive) {
+        this.queueDeviceAlert(imei, alert);
+      }
+    } else {
+      alertsMap.delete("over speeding");
+    }
 
     /*
      * Geofence violation.
@@ -901,22 +920,21 @@ class TeltonikaController {
     });
 
     if (routeViolation) {
+      const wasActive = alertsMap.has("geofence violation");
+
+      const alert = {
+        ...common,
+        evt: GEOFENCE_EVT,
+        type: "safety",
+        message: "geofence violation",
+      };
+
+      alertsMap.set("geofence violation", alert);
+
       /*
        * Only create/queue when it becomes active.
        */
-
-      const wasActive = alertsMap.has("geofence violation");
-
       if (!wasActive) {
-        const alert = {
-          ...common,
-          evt: GEOFENCE_EVT,
-          type: "safety",
-          message: "geofence violation",
-        };
-
-        alertsMap.set("geofence violation", alert);
-
         this.queueDeviceAlert(imei, alert);
       }
     } else {

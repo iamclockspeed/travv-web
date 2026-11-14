@@ -257,11 +257,20 @@ exports.createVehicle = async (req, res, next, tController) => {
 
 exports.countVehicles = async (req, res) => {
   try {
-    const total = await Vehicle.countDocuments();
+    const vehicles = await Vehicle.find()
+      .populate({
+        path: "device",
+        select: "structuredTrackingData.general.status",
+      })
+      .lean();
 
-    const offline = await Device.countDocuments({
-      "structuredTrackingData.general.status": "offline",
-    });
+    const total = vehicles.length;
+
+    const offline = vehicles.filter(
+      (vehicle) =>
+        vehicle.device &&
+        vehicle.device.structuredTrackingData?.general?.status === "offline"
+    ).length;
 
     return res.json({
       ok: true,

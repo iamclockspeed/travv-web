@@ -151,10 +151,11 @@ const Dashboard = () => {
               ></DashCard>
 
               <DashCard
-                v1={stats.lowFuelVehicles}
+                v1="N/A"
                 v2="Low Fuel Vehicles"
                 icon={<LocalGasStationIcon fontSize="large" />}
                 onClick={() => navigate("/low-fuel-vehicles")}
+                disabled
               ></DashCard>
             </Grid>
           </Box>
